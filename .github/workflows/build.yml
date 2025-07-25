@@ -57,8 +57,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - shell: msys2 {0}
-        run: |
+      - run: |
           mkdir _build _deploy
           cmake -GNinja -B_build -H. -DCMAKE_INSTALL_PREFIX=_deploy -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
           ninja -C _build -v install
