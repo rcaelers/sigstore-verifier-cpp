@@ -14,7 +14,7 @@ jobs:
         configuration: [Debug, Release]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -38,7 +38,6 @@ jobs:
 
       - shell: msys2 {0}
         run: |
-          pacman -U _ext/*.pkg.tar.zst --noconfirm --needed
           mkdir _build _deploy
           export MINGW_ROOT=/c/msys64
           export MSYSTEM=CLANG64
@@ -53,11 +52,26 @@ jobs:
       matrix:
         configuration: [Debug, Release]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - run: |
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            libboost-all-dev \
+            libssl-dev \
+            libspdlog-dev \
+            libprotobuf-dev \
+            protobuf-compiler \
+            libabsl-dev \
+            pkg-config
+
+      - name: Build and test
+        run: |
           mkdir _build _deploy
           cmake -GNinja -B_build -H. -DCMAKE_INSTALL_PREFIX=_deploy -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
           ninja -C _build -v install

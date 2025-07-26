@@ -1,0 +1,78 @@
+# For most projects, this workflow file will not need changing; you simply need
+# to commit it to your repository.
+#
+# You may wish to alter this file to override the set of languages analyzed,
+# or to provide custom queries or build logic.
+#
+# ******** NOTE ********
+# We have attempted to detect the languages in your repository. Please check
+# the `language` matrix defined below to confirm you have the correct set of
+# supported CodeQL languages.
+#
+name: "CodeQL"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "34 13 * * 6"
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: windows-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          msystem: clang64
+          install: >-
+            git
+            mingw-w64-clang-x86_64-boost
+            mingw-w64-clang-x86_64-clang
+            mingw-w64-clang-x86_64-cmake
+            mingw-w64-clang-x86_64-compiler-rt
+            mingw-w64-clang-x86_64-lld
+            mingw-w64-clang-x86_64-ninja
+            mingw-w64-clang-x86_64-openssl
+            mingw-w64-clang-x86_64-protobuf
+            mingw-w64-clang-x86_64-spdlog
+            tar
+            xz
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - shell: msys2 {0}
+        run: |
+          mkdir _build _deploy
+          export MINGW_ROOT=/c/msys64
+          export MSYSTEM=CLANG64
+          cmake -GNinja -B_build -H. -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/msys2.cmake -DCMAKE_INSTALL_PREFIX=_deploy -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          ninja -C _build -v
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
