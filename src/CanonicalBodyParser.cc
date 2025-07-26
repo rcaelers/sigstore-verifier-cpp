@@ -28,20 +28,6 @@
 
 namespace sigstore
 {
-  outcome::std_result<LogEntry> CanonicalBodyParser::parse_from_base64_json(const std::string &base64_encoded_body)
-  {
-    try
-      {
-        std::string json_body = Base64::decode(base64_encoded_body);
-        return parse_from_json(json_body);
-      }
-    catch (const std::exception &e)
-      {
-        logger_->error("Failed to decode base64 encoded body: {}", e.what());
-        return SigstoreError::InvalidTransparencyLog;
-      }
-  }
-
   outcome::std_result<LogEntry> CanonicalBodyParser::parse_from_json(const std::string &json_body)
   {
     try

@@ -61,7 +61,7 @@ PrintTo(const TestBundleData &data, std::ostream *os)
       << "\", format_type=" << static_cast<int>(data.format_type) << "}";
 }
 
-class TransparencyLogVerifierTest : public ::testing::Test
+class BundleTest : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -180,7 +180,7 @@ protected:
 // Valid JSON
 // =============================================================================
 
-TEST_F(TransparencyLogVerifierTest, ValidateValidLog)
+TEST_F(BundleTest, ValidateValidLog)
 {
   auto log = load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
@@ -191,7 +191,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateValidLog)
   ASSERT_TRUE(result) << "Failed to verify transparency log: " << result.error().message();
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateValidBundle)
+TEST_F(BundleTest, ValidateValidBundle)
 {
   auto log = load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
@@ -207,7 +207,15 @@ TEST_F(TransparencyLogVerifierTest, ValidateValidBundle)
 // Inalid JSON
 // =============================================================================
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProof)
+TEST_F(BundleTest, ValidateLog_NoVerificationMaterial)
+{
+  auto log = load_standard_bundle([this](boost::json::value &json_val) {
+    apply_json_patch(json_val, "", [](boost::json::object &obj) { obj.erase(obj.find("verificationMaterial")); });
+  });
+  ASSERT_TRUE(log.has_error());
+}
+
+TEST_F(BundleTest, ValidateLog_NoInclusionProof)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.erase(obj.find("inclusionProof")); });
@@ -222,7 +230,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProof)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofWrongType)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofWrongType)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -233,7 +241,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofWrongType)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofCheckPoint)
+TEST_F(BundleTest, ValidateLog_NoInclusionProofCheckPoint)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -250,7 +258,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofCheckPoint)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofCanonicalizedBody)
+TEST_F(BundleTest, ValidateLog_NoInclusionProofCanonicalizedBody)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -279,7 +287,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofCanonicalizedBod
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCanonicalizedBody)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCanonicalizedBody)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -308,7 +316,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCanonicaliz
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofLogIndex)
+TEST_F(BundleTest, ValidateLog_NoInclusionProofLogIndex)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -325,7 +333,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofLogIndex)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofLogIndex1)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofLogIndex1)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [&](boost::json::object &obj) {
@@ -342,7 +350,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofLogIndex1)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofLogIndex2)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofLogIndex2)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [&](boost::json::object &obj) {
@@ -359,7 +367,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofLogIndex2)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofLogIndex3)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofLogIndex3)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -376,7 +384,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofLogIndex3)
   // ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofTreeSize)
+TEST_F(BundleTest, ValidateLog_NoInclusionProofTreeSize)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -393,7 +401,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofTreeSize)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofTreeSize1)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofTreeSize1)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [&](boost::json::object &obj) {
@@ -410,7 +418,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofTreeSize1)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofTreeSize2)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofTreeSize2)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [&](boost::json::object &obj) {
@@ -427,7 +435,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofTreeSize2)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofTreeSize3)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofTreeSize3)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -445,7 +453,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofTreeSize3)
   // ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofRootHash)
+TEST_F(BundleTest, ValidateLog_NoInclusionProofRootHash)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -462,7 +470,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofRootHash)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofRootHash)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofRootHash)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -479,7 +487,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofRootHash)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofHashes)
+TEST_F(BundleTest, ValidateLog_NoInclusionProofHashes)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) { obj.erase(obj.find("hashes")); });
@@ -497,7 +505,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionProofHashes)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofHashes)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofHashes)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -515,7 +523,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofHashes)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_EmptyInclusionProofHashes)
+TEST_F(BundleTest, ValidateLog_EmptyInclusionProofHashes)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -532,7 +540,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_EmptyInclusionProofHashes)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpoint1)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCheckpoint1)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -561,7 +569,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpoint1
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpoint2)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCheckpoint2)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -590,7 +598,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpoint2
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointInconsistentTreeSize)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCheckpointInconsistentTreeSize)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [&](boost::json::object &obj) {
@@ -623,7 +631,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointI
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointTreeSizeWrongType)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCheckpointTreeSizeWrongType)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [&](boost::json::object &obj) {
@@ -656,7 +664,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointT
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointNoBody)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCheckpointNoBody)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [&](boost::json::object &obj) {
@@ -689,7 +697,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointN
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointNoSeparator)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCheckpointNoSeparator)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -722,7 +730,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointN
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointNoNewLine)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCheckpointNoNewLine)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) {
@@ -755,7 +763,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointN
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointWrongSignature)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionProofCheckpointWrongSignature)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [&](boost::json::object &obj) {
@@ -792,7 +800,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionProofCheckpointW
 // Top-level mediaType Tests
 // =============================================================================
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMediaType)
+TEST_F(BundleTest, ValidateLog_NoMediaType)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.as_object();
@@ -801,7 +809,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMediaType)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidMediaType)
+TEST_F(BundleTest, ValidateLog_InvalidMediaType)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.as_object();
@@ -814,7 +822,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidMediaType)
 // Certificate Tests
 // =============================================================================
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoCertificate)
+TEST_F(BundleTest, ValidateLog_NoCertificate)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.at_pointer("/verificationMaterial").as_object();
@@ -823,7 +831,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoCertificate)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoCertificateRawBytes)
+TEST_F(BundleTest, ValidateLog_NoCertificateRawBytes)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.at_pointer("/verificationMaterial/certificate").as_object();
@@ -832,7 +840,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoCertificateRawBytes)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidCertificateRawBytes)
+TEST_F(BundleTest, ValidateLog_InvalidCertificateRawBytes)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.at_pointer("/verificationMaterial/certificate").as_object();
@@ -845,7 +853,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidCertificateRawBytes)
 // tlogEntries Tests
 // =============================================================================
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoTlogEntries)
+TEST_F(BundleTest, ValidateLog_NoTlogEntries)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.at_pointer("/verificationMaterial").as_object();
@@ -854,7 +862,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoTlogEntries)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_EmptyTlogEntries)
+TEST_F(BundleTest, ValidateLog_EmptyTlogEntries)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.at_pointer("/verificationMaterial").as_object();
@@ -863,7 +871,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_EmptyTlogEntries)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoTlogEntryLogIndex)
+TEST_F(BundleTest, ValidateLog_NoTlogEntryLogIndex)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.erase(obj.find("logIndex")); });
@@ -877,7 +885,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoTlogEntryLogIndex)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidTlogEntryLogIndex)
+TEST_F(BundleTest, ValidateLog_InvalidTlogEntryLogIndex)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -887,7 +895,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidTlogEntryLogIndex)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoLogId)
+TEST_F(BundleTest, ValidateLog_NoLogId)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -916,7 +924,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoLogId)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_LogIdWrongType)
+TEST_F(BundleTest, ValidateLog_LogIdWrongType)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -929,7 +937,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_LogIdWrongType)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoLogIdKeyId)
+TEST_F(BundleTest, ValidateLog_NoLogIdKeyId)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.at_pointer("/verificationMaterial/tlogEntries/0/logId").as_object();
@@ -945,7 +953,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoLogIdKeyId)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidLogIdKeyId)
+TEST_F(BundleTest, ValidateLog_InvalidLogIdKeyId)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.at_pointer("/verificationMaterial/tlogEntries/0/logId").as_object();
@@ -961,7 +969,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidLogIdKeyId)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoKindVersion)
+TEST_F(BundleTest, ValidateLog_NoKindVersion)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &obj = json_val.at_pointer("/verificationMaterial/tlogEntries/0").as_object();
@@ -976,7 +984,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoKindVersion)
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidKindVersionWrongType)
+TEST_F(BundleTest, ValidateLog_InvalidKindVersionWrongType)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0").as_object();
@@ -986,7 +994,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidKindVersionWrongType)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoKindVersionKind)
+TEST_F(BundleTest, ValidateLog_NoKindVersionKind)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0/kindVersion").as_object();
@@ -1001,7 +1009,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoKindVersionKind)
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidKindVersionKind)
+TEST_F(BundleTest, ValidateLog_InvalidKindVersionKind)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0/kindVersion").as_object();
@@ -1016,7 +1024,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidKindVersionKind)
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoKindVersionVersion)
+TEST_F(BundleTest, ValidateLog_NoKindVersionVersion)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0/kindVersion").as_object();
@@ -1031,7 +1039,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoKindVersionVersion)
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidKindVersionVersion)
+TEST_F(BundleTest, ValidateLog_InvalidKindVersionVersion)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0/kindVersion").as_object();
@@ -1046,7 +1054,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidKindVersionVersion)
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoIntegratedTime)
+TEST_F(BundleTest, ValidateLog_NoIntegratedTime)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.erase(obj.find("integratedTime")); });
@@ -1061,7 +1069,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoIntegratedTime)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidIntegratedTime1)
+TEST_F(BundleTest, ValidateLog_InvalidIntegratedTime1)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -1071,7 +1079,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidIntegratedTime1)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidIntegratedTime2)
+TEST_F(BundleTest, ValidateLog_InvalidIntegratedTime2)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.find("integratedTime")->value() = true; });
@@ -1079,7 +1087,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidIntegratedTime2)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_IntegratedTimeOutOfRange)
+TEST_F(BundleTest, ValidateLog_IntegratedTimeOutOfRange)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -1096,7 +1104,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_IntegratedTimeOutOfRange)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_IntegratedTimeFuture)
+TEST_F(BundleTest, ValidateLog_IntegratedTimeFuture)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) {
@@ -1115,7 +1123,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_IntegratedTimeFuture)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionPromise)
+TEST_F(BundleTest, ValidateLog_NoInclusionPromise)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0").as_object();
@@ -1130,7 +1138,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionPromise)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InclusionPromiseWrongType)
+TEST_F(BundleTest, ValidateLog_InclusionPromiseWrongType)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0").as_object();
@@ -1140,7 +1148,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InclusionPromiseWrongType)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionPromiseSignedEntryTimestamp)
+TEST_F(BundleTest, ValidateLog_NoInclusionPromiseSignedEntryTimestamp)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionPromise", [](boost::json::object &obj) {
@@ -1157,7 +1165,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoInclusionPromiseSignedEntryTim
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionPromiseSignedEntryTimestamp)
+TEST_F(BundleTest, ValidateLog_InvalidInclusionPromiseSignedEntryTimestamp)
 {
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionPromise", [](boost::json::object &obj) {
@@ -1171,7 +1179,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidInclusionPromiseSignedEnt
 // messageSignature Tests
 // =============================================================================
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageSignature)
+TEST_F(BundleTest, ValidateLog_NoMessageSignature)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.as_object();
@@ -1180,7 +1188,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageSignature)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageDigest)
+TEST_F(BundleTest, ValidateLog_NoMessageDigest)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/messageSignature").as_object();
@@ -1196,7 +1204,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageDigest)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageDigestAlgorithm)
+TEST_F(BundleTest, ValidateLog_NoMessageDigestAlgorithm)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/messageSignature/messageDigest").as_object();
@@ -1212,7 +1220,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageDigestAlgorithm)
   ASSERT_FALSE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidMessageDigestAlgorithm)
+TEST_F(BundleTest, ValidateLog_InvalidMessageDigestAlgorithm)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/messageSignature/messageDigest").as_object();
@@ -1221,7 +1229,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidMessageDigestAlgorithm)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageDigestDigest)
+TEST_F(BundleTest, ValidateLog_NoMessageDigestDigest)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/messageSignature/messageDigest").as_object();
@@ -1238,7 +1246,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageDigestDigest)
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidMessageDigestDigest)
+TEST_F(BundleTest, ValidateLog_InvalidMessageDigestDigest)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/messageSignature/messageDigest").as_object();
@@ -1255,7 +1263,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidMessageDigestDigest)
   ASSERT_TRUE(result.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageSignatureSignature)
+TEST_F(BundleTest, ValidateLog_NoMessageSignatureSignature)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/messageSignature").as_object();
@@ -1264,7 +1272,7 @@ TEST_F(TransparencyLogVerifierTest, ValidateLog_NoMessageSignatureSignature)
   ASSERT_TRUE(log.has_error());
 }
 
-TEST_F(TransparencyLogVerifierTest, ValidateLog_InvalidMessageSignatureSignature)
+TEST_F(BundleTest, ValidateLog_InvalidMessageSignatureSignature)
 {
   auto log = load_standard_bundle([](boost::json::value &json_val) {
     auto &o = json_val.at_pointer("/messageSignature").as_object();

@@ -21,6 +21,7 @@
 #include "CertificateStore.hh"
 #include "Certificate.hh"
 #include "Base64.hh"
+#include "sigstore/SigstoreErrors.hh"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -115,4 +116,200 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     EXPECT_TRUE(result.value());
   }
 
+  TEST_F(CertificateStoreTest, TrustBundleNotObject)
+  {
+    std::string json_array = R"([])";
+    auto result = store()->load_trust_bundle(json_array);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_string = R"("not an object")";
+    result = store()->load_trust_bundle(json_string);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_number = R"(42)";
+    result = store()->load_trust_bundle(json_number);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, TrustBundleMissingChains)
+  {
+    std::string json_missing_chains = R"({})";
+    auto result = store()->load_trust_bundle(json_missing_chains);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_chains_not_array = R"({"chains": "not an array"})";
+    result = store()->load_trust_bundle(json_chains_not_array);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_chains_object = R"({"chains": {}})";
+    result = store()->load_trust_bundle(json_chains_object);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, TrustBundleEmptyChains)
+  {
+    std::string json_empty_chains = R"({"chains": []})";
+    auto result = store()->load_trust_bundle(json_empty_chains);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, InvalidChainObjects)
+  {
+    std::string json_chain_not_object = R"({"chains": ["not an object"]})";
+    auto result = store()->load_trust_bundle(json_chain_not_object);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_chain_number = R"({"chains": [42]})";
+    result = store()->load_trust_bundle(json_chain_number);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_chain_array = R"({"chains": [[]]})";
+    result = store()->load_trust_bundle(json_chain_array);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, ChainMissingCertificates)
+  {
+    std::string json_no_certificates = R"({"chains": [{}]})";
+    auto result = store()->load_trust_bundle(json_no_certificates);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_certificates_not_array = R"({"chains": [{"certificates": "not an array"}]})";
+    result = store()->load_trust_bundle(json_certificates_not_array);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_certificates_object = R"({"chains": [{"certificates": {}}]})";
+    result = store()->load_trust_bundle(json_certificates_object);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, EmptyCertificatesArray)
+  {
+    std::string json_empty_certificates = R"({"chains": [{"certificates": []}]})";
+    auto result = store()->load_trust_bundle(json_empty_certificates);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, CertificateNotString)
+  {
+    std::string json_cert_number = R"({"chains": [{"certificates": [42]}]})";
+    auto result = store()->load_trust_bundle(json_cert_number);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_cert_object = R"({"chains": [{"certificates": [{}]}]})";
+    result = store()->load_trust_bundle(json_cert_object);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_cert_array = R"({"chains": [{"certificates": [[]]}]})";
+    result = store()->load_trust_bundle(json_cert_array);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, InvalidPEMCertificate)
+  {
+    std::string json_invalid_pem = R"({"chains": [{"certificates": ["invalid pem data"]}]})";
+    auto result = store()->load_trust_bundle(json_invalid_pem);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+
+    std::string json_malformed_pem = R"({"chains": [{"certificates": ["-----BEGIN CERTIFICATE-----\nmalformed\n-----END CERTIFICATE-----"]}]})";
+    result = store()->load_trust_bundle(json_malformed_pem);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, CertificateVerificationFailure)
+  {
+    // NOLINTNEXTLINE: Need to handle embedded binary data conversion
+    std::string trust_bundle_json(reinterpret_cast<const char *>(embedded_trust_bundle), embedded_trust_bundle_size);
+    auto load_result = store()->load_trust_bundle(trust_bundle_json);
+    EXPECT_TRUE(load_result.has_value());
+
+    std::string invalid_cert_pem = R"(-----BEGIN CERTIFICATE-----
+MIIDETCCAfmgAwIBAgIJAKNs8rUhfkGUMA0GCSqGSIb3DQEBCwUAMBYxFDASBgNV
+BAMMC3NvbWVob3N0LmNvbTAeFw0xNzEyMjMxNzIwMDVaFw0yNzEyMjExNzIwMDVa
+MBYxFDASBgNVBAMMC3NvbWVob3N0LmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEP
+ADCCAQoCggEBAMOK8dRnKz5R3X5UGvz2xHWrNBnC1TjSyKEK6wl+dKjHSZnxLBHw
+NBmxoBv3cP7h/Q1KzKQGFRGn2/4vHIWgG5D5f7cTl7KbqGUgTqG3qGxVKJSDFP9U
+wUGKFGDfpzMaZtEKhj6uHWxlPj3JNR4hzX9qRh+4VBLWzBhpREjJ0Z9IWQnVQHX4
+0KOKhZ2nBIYfkwJRJXz7oVKJ9OKFOx8mz7fIxKz5K6T1eLkIVP2tKrYrFhYrE2xP
+SKjMp7v1s3N0oHr+TZI6YlVmxZy3qyTzFYV7XmfhXhxO5O+XZT1gYZMXw7/LzEXS
+N3rRyXQGzLvhKEqhP8D7sEJ2fO3dU5FJ2ssCAwEAAaNTMFEwHQYDVR0OBBYEFFyY
+S0sGVKONuLF7Uf2LZl8f/l+LMB8GA1UdIwQYMBaAFFyYS0sGVKONuLF7Uf2LZl8f
+/l+LMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAKZCfOLNKJ/L
+YQ9QE6hWwYOByMUBGPAR3j3sN4V8Xl8Hy4FqFg6YGnC4hVq0OdU6D5dZeR8OKyLa
+-----END CERTIFICATE-----)";
+
+    auto cert_result = Certificate::from_pem(invalid_cert_pem);
+    if (cert_result.has_value())
+      {
+        auto verify_result = store()->verify_certificate_chain(cert_result.value());
+        EXPECT_TRUE(verify_result.has_value());
+        EXPECT_FALSE(verify_result.value());
+      }
+  }
+
+  TEST_F(CertificateStoreTest, TrustBundleNoValidCertificates)
+  {
+    std::string json_no_valid_certs = R"({
+      "chains": [
+        {
+          "certificates": [
+            "-----BEGIN CERTIFICATE-----\ninvalid_certificate_data\n-----END CERTIFICATE-----",
+            "-----BEGIN CERTIFICATE-----\nmore_invalid_data\n-----END CERTIFICATE-----"
+          ]
+        },
+        {
+          "certificates": [
+            "-----BEGIN CERTIFICATE-----\nanother_invalid_cert\n-----END CERTIFICATE-----"
+          ]
+        }
+      ]
+    })";
+
+    auto result = store()->load_trust_bundle(json_no_valid_certs);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+  }
+
+  TEST_F(CertificateStoreTest, CertificateVerificationWithLogging)
+  {
+    // NOLINTNEXTLINE: Need to handle embedded binary data conversion
+    std::string trust_bundle_json(reinterpret_cast<const char *>(embedded_trust_bundle), embedded_trust_bundle_size);
+    auto load_result = store()->load_trust_bundle(trust_bundle_json);
+    EXPECT_TRUE(load_result.has_value());
+
+    std::string self_signed_cert = R"(-----BEGIN CERTIFICATE-----
+MIICljCCAX4CCQDKGKyvn8fK/jANBgkqhkiG9w0BAQsFADANMQswCQYDVQQGEwJV
+UzAeFw0yNTAxMDEwMDAwMDBaFw0yNjAxMDEwMDAwMDBaMA0xCzAJBgNVBAYTAlVT
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3rKGpzWKB6rGQlNu0KNn
+BmTwUi4ZdRl+7lw7zXhFp8dRyDqsxjWxKJ8Nl2e4Hj5oKrQ3J4rw9g5lPzJ7w8j7
+2xKg5yJ4QV5oGhzDdR4h6bI8xNn1QHwdKzW4N3xJzV7Q9cJ6bY4pKp7J9zW3kGJ
+-----END CERTIFICATE-----)";
+
+    auto cert_result = Certificate::from_pem(self_signed_cert);
+    if (cert_result.has_value())
+      {
+        auto verify_result = store()->verify_certificate_chain(cert_result.value());
+        EXPECT_TRUE(verify_result.has_value());
+        EXPECT_FALSE(verify_result.value());
+      }
+  }
 } // namespace sigstore::test

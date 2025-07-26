@@ -53,7 +53,6 @@ namespace sigstore
   public:
     CanonicalBodyParser() = default;
 
-    outcome::std_result<LogEntry> parse_from_base64_json(const std::string &base64_encoded_body);
     outcome::std_result<LogEntry> parse_from_json(const std::string &json_body);
 
   private:

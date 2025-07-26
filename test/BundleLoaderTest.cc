@@ -32,19 +32,17 @@ namespace sigstore::test
   protected:
     void SetUp() override
     {
-      loader = std::make_unique<SigstoreBundleLoader>();
     }
 
     void TearDown() override
     {
     }
-
-    std::unique_ptr<SigstoreBundleLoader> loader;
   };
 
   TEST_F(SigstoreBundleLoaderTest, LoadFromFile)
   {
-    auto result = loader->load_from_file("appcast-sigstore.xml.sigstore.new.bundle");
+    SigstoreBundleLoader loader;
+    auto result = loader.load_from_file("appcast-sigstore.xml.sigstore.new.bundle");
     ASSERT_TRUE(result.has_value()) << "Failed to load file: " << result.error().message();
 
     const auto &bundle = result.value();
@@ -53,43 +51,34 @@ namespace sigstore::test
 
   TEST_F(SigstoreBundleLoaderTest, InvalidJsonString)
   {
+    SigstoreBundleLoader loader;
     std::string invalid_json = "{ invalid json content";
-    auto result = loader->load_from_json(invalid_json);
-    EXPECT_FALSE(result.has_value());
-  }
-
-  TEST_F(SigstoreBundleLoaderTest, MissingRequiredFields)
-  {
-    std::string json_missing_media_type = R"({
-    "verificationMaterial": {
-      "tlogEntries": []
-    },
-    "messageSignature": {
-      "messageDigest": {
-        "algorithm": "SHA2_256",
-        "digest": "czMzaDBsMXMgbUQ1IGQxOWc0czcrK1EvR0lqMTFhTGNabEp5"
-      },
-      "signature": "TUVVUlFUQWlnR1lVSE05SUF4L1kwWldoZ0JIa05nZzZONC92dURkRXhPak15bWNOWUJUa1NnSUJoTU5uRklUaWpRODNGZ0ZOSFdMbWtOWHFlNTFGNDF4VGpPekE9PQ=="
-    }
-  })";
-
-    auto result = loader->load_from_json(json_missing_media_type);
-    // This should still work as media_type might not be required by protobuf
-    // The test validates that the parser handles missing fields gracefully
+    auto result = loader.load_from_json(invalid_json);
+    EXPECT_TRUE(result.has_error());
   }
 
   TEST_F(SigstoreBundleLoaderTest, EmptyObject)
   {
+    SigstoreBundleLoader loader;
     std::string empty_json = "{}";
-    auto result = loader->load_from_json(empty_json);
-    EXPECT_TRUE(result.has_error()); // Empty bundle should be valid
+    auto result = loader.load_from_json(empty_json);
+    EXPECT_TRUE(result.has_error());
   }
 
   TEST_F(SigstoreBundleLoaderTest, FileNotFound)
   {
+    SigstoreBundleLoader loader;
     std::filesystem::path nonexistent_file = "nonexistent.json";
-    auto result = loader->load_from_file(nonexistent_file);
-    EXPECT_FALSE(result.has_value());
+    auto result = loader.load_from_file(nonexistent_file);
+    EXPECT_TRUE(result.has_error());
+  }
+
+  TEST_F(SigstoreBundleLoaderTest, FileIsCorrupted)
+  {
+    SigstoreBundleLoader loader;
+    std::filesystem::path corrupted_file = "corrupted.json";
+    auto result = loader.load_from_file(corrupted_file);
+    EXPECT_TRUE(result.has_error());
   }
 
 } // namespace sigstore::test

@@ -76,6 +76,7 @@ find_package(OpenSSL REQUIRED)
 #----------------------------------------------------------------------------------------------------
 # Protobuf
 
+#find_package(Protobuf QUIET CONFIG)
 find_package(Protobuf 6.31.1 QUIET CONFIG)
 if(NOT ${Protobuf_FOUND})
   set(protobuf_BUILD_TESTS OFF)

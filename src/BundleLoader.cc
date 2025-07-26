@@ -47,7 +47,6 @@ namespace sigstore
           }
 
         std::string json_content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
         return load_from_json(json_content);
       }
     catch (const std::exception &e)
@@ -66,7 +65,6 @@ namespace sigstore
     options.case_insensitive_enum_parsing = true;
 
     auto status = google::protobuf::util::JsonStringToMessage(json_content, &bundle, options);
-
     if (!status.ok())
       {
         logger_->error("Failed to parse JSON Bundle: {}", std::string(status.message()));
