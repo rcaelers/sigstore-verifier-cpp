@@ -76,13 +76,17 @@ find_package(OpenSSL REQUIRED)
 #----------------------------------------------------------------------------------------------------
 # Protobuf
 
-#find_package(Protobuf QUIET CONFIG)
 find_package(Protobuf 6.31.1 QUIET CONFIG)
 if(NOT ${Protobuf_FOUND})
   set(protobuf_BUILD_TESTS OFF)
   set(protobuf_BUILD_SHARED_LIBS ON)
   set(protobuf_BUILD_EXPORT OFF)
   set(protobuf_MSVC_STATIC_RUNTIME OFF)
+
+  # Suppress deprecation warnings when building protobuf itself
+  set(CMAKE_CXX_FLAGS_BACKUP "${CMAKE_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+
   FetchContent_Declare(
     protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
@@ -91,6 +95,9 @@ if(NOT ${Protobuf_FOUND})
   )
   FetchContent_MakeAvailable(protobuf)
 
+  # Restore original flags after protobuf compilation
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_BACKUP}")
+
   include(${protobuf_SOURCE_DIR}/cmake/protobuf-generate.cmake)
   list(APPEND Protobuf_INCLUDE_DIRS "${protobuf_SOURCE_DIR}/src/")
 endif()
@@ -98,13 +105,21 @@ endif()
 find_package(absl QUIET)
 if(NOT absl_FOUND)
   message(STATUS "Abseil not found, fetching compatible version...")
+
+  # Suppress deprecation warnings when building abseil
+  set(CMAKE_CXX_FLAGS_BACKUP "${CMAKE_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+
   FetchContent_Declare(
     abseil
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-    GIT_TAG        20250512.0
+    GIT_TAG        20250512.1
     GIT_SHALLOW    TRUE
   )
   FetchContent_MakeAvailable(abseil)
+
+  # Restore original flags after abseil compilation
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_BACKUP}")
 endif()
 
 #----------------------------------------------------------------------------------------------------

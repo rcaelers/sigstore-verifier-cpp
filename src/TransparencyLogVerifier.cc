@@ -27,6 +27,7 @@
 #include <boost/json.hpp>
 #include <openssl/evp.h>
 #include <array>
+#include <fmt/chrono.h>
 
 #include "BundleHelper.hh"
 #include "Base64.hh"
@@ -44,10 +45,14 @@ namespace
 {
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays)
   const unsigned char embedded_rekor_pubkey[] = {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc23-extensions"
+#ifdef __clang__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wc23-extensions"
+#endif
 #embed "rekor.pem"
-#pragma clang diagnostic pop
+#ifdef __clang__
+#  pragma clang diagnostic pop
+#endif
   };
   const size_t embedded_rekor_pubkey_size = sizeof(embedded_rekor_pubkey);
 

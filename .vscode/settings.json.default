@@ -11,11 +11,11 @@
   "cmake.installPrefix": "${workspaceFolder}/_deploy",
   "cmake.generator": "Ninja",
   "cmake.configureSettings": {
-    "_WITH_TESTS": "ON",
+    "WITH_TESTS": "ON",
     "CODE_COVERAGE": "OFF",
     "CMAKE_BUILD_TYPE": "Debug",
-    "CMAKE_C_COMPILER": "clang",
-    "CMAKE_CXX_COMPILER": "clang++",
+    "CMAKE_C_COMPILER": "gcc-15",
+    "CMAKE_CXX_COMPILER": "g++-15",
     "CMAKE_VERBOSE_MAKEFILE": "ON",
     "OPENSSL_ROOT_DIR": "/usr/local/opt/openssl"
   }

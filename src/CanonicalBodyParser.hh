@@ -25,6 +25,7 @@
 #include <boost/json/object.hpp>
 #include <memory>
 #include <string>
+#include <variant>
 
 #include <spdlog/spdlog.h>
 #include "Logging.hh"

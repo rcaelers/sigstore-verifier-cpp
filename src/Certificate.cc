@@ -27,6 +27,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/evp.h>
 #include <openssl/asn1.h>
+#include <fmt/chrono.h>
 
 #include "sigstore/SigstoreErrors.hh"
 #include "PublicKey.hh"

@@ -30,10 +30,14 @@ namespace
 {
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays)
   const unsigned char embedded_trust_bundle[] = {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc23-extensions"
+#ifdef __clang__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wc23-extensions"
+#endif
 #embed "../src/trustBundle.json"
-#pragma clang diagnostic pop
+#ifdef __clang__
+#  pragma clang diagnostic pop
+#endif
   };
   const size_t embedded_trust_bundle_size = sizeof(embedded_trust_bundle);
 

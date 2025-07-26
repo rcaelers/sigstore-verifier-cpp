@@ -77,6 +77,23 @@ target_sources(sigstore PRIVATE
 target_link_libraries(sigstore PRIVATE spdlog::spdlog OpenSSL::SSL OpenSSL::Crypto Boost::json)
 target_link_libraries(sigstore PUBLIC protobuf::libprotobuf absl::base absl::status absl::strings)
 
+# Mark protobuf include directories as system to suppress warnings
+if(TARGET protobuf::libprotobuf)
+  # Resolve alias target to actual target
+  get_target_property(PROTOBUF_ALIASED protobuf::libprotobuf ALIASED_TARGET)
+  if(PROTOBUF_ALIASED)
+    set(PROTOBUF_TARGET ${PROTOBUF_ALIASED})
+  else()
+    set(PROTOBUF_TARGET protobuf::libprotobuf)
+  endif()
+
+  get_target_property(PROTOBUF_INCLUDE_DIRS ${PROTOBUF_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
+  if(PROTOBUF_INCLUDE_DIRS)
+    set_target_properties(${PROTOBUF_TARGET} PROPERTIES
+      INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${PROTOBUF_INCLUDE_DIRS}")
+  endif()
+endif()
+
 target_include_directories(
   sigstore
   PRIVATE
@@ -85,6 +102,12 @@ target_include_directories(
   ${boosturl_SOURCE_DIR}/include
   PUBLIC
   ${PROJECT_SOURCE_DIR}/include
+)
+
+target_include_directories(
+  sigstore
+  SYSTEM  # Treat the following includes as system headers (suppresses warnings)
+  PUBLIC // TODO: should be private
   $<BUILD_INTERFACE:${GENERATED_DIR}>
   $<BUILD_INTERFACE:${SIGSTORE_PROTO_DIR}>
   $<BUILD_INTERFACE:${GOOGLEAPIS_PROTO_DIR}>
