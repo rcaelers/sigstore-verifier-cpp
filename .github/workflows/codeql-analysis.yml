@@ -59,12 +59,13 @@ jobs:
             mingw-w64-clang-x86_64-openssl
             mingw-w64-clang-x86_64-protobuf
             mingw-w64-clang-x86_64-spdlog
+            mingw-w64-clang-x86_64-abseil-cpp
             tar
             xz
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - shell: msys2 {0}
         run: |

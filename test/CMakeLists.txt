@@ -28,7 +28,6 @@ target_include_directories(test-sigstore
 target_code_coverage(test-crash AUTO ALL)
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml.sigstore.bundle" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml.sigstore.new.bundle" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/body.json" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/tlog.json" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
