@@ -57,9 +57,7 @@ jobs:
             mingw-w64-clang-x86_64-lld
             mingw-w64-clang-x86_64-ninja
             mingw-w64-clang-x86_64-openssl
-            mingw-w64-clang-x86_64-protobuf
             mingw-w64-clang-x86_64-spdlog
-            mingw-w64-clang-x86_64-abseil-cpp
             tar
             xz
 
