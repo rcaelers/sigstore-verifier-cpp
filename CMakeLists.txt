@@ -106,11 +106,11 @@ if(NOT protobuf_FOUND)
   set(protobuf_BUILD_SHARED_LIBS ON)
   set(protobuf_BUILD_EXPORT OFF)
   set(protobuf_MSVC_STATIC_RUNTIME OFF)
+  set(protobuf_BUILD_PROTOC_BINARIES ON)
 
   set(CMAKE_CXX_FLAGS_BACKUP "${CMAKE_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
 
-  set(protobuf_BUILD_SHARED_LIBS ON)
   FetchContent_Declare(
     protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
