@@ -77,3 +77,31 @@ jobs:
           ninja -C _build -v install
           cd _build
           ctest -V
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install \
+            cmake \
+            ninja \
+            boost \
+            openssl \
+            spdlog
+
+      - name: Build and test
+        run: |
+          mkdir _build _deploy
+          cmake -GNinja -B_build -H. -DCMAKE_INSTALL_PREFIX=_deploy -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          ninja -C _build -v install
+          cd _build
+          ctest -V

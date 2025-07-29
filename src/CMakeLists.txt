@@ -74,8 +74,8 @@ target_sources(sigstore PRIVATE
   ${GOOGLEAPI_PROTO_SRCS}
 )
 
-target_link_libraries(sigstore PRIVATE spdlog::spdlog OpenSSL::SSL OpenSSL::Crypto Boost::json)
 target_link_libraries(sigstore PUBLIC protobuf::libprotobuf absl::base absl::status absl::strings)
+target_link_libraries(sigstore PRIVATE spdlog::spdlog OpenSSL::SSL OpenSSL::Crypto Boost::json)
 
 # Mark protobuf include directories as system to suppress warnings
 if(TARGET protobuf::libprotobuf)
@@ -107,7 +107,7 @@ target_include_directories(
 target_include_directories(
   sigstore
   SYSTEM  # Treat the following includes as system headers (suppresses warnings)
-  PUBLIC // TODO: should be private
+  PUBLIC # TODO: should be private
   $<BUILD_INTERFACE:${GENERATED_DIR}>
   $<BUILD_INTERFACE:${SIGSTORE_PROTO_DIR}>
   $<BUILD_INTERFACE:${GOOGLEAPIS_PROTO_DIR}>

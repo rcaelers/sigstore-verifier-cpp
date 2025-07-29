@@ -4,6 +4,7 @@ add_executable(test-sigstore
   CanonicalBodyParserTest.cc
   CertificateStoreTest.cc
   CertificateTest.cc
+  CheckpointParserTest.cc
   PublicKeyTest.cc
   RFC6962HasherTest.cc
   SigstoreTest.cc
@@ -25,7 +26,8 @@ target_include_directories(test-sigstore
   ${PROJECT_SOURCE_DIR}/src
   ${PROJECT_SOURCE_DIR}/include
 )
-target_code_coverage(test-crash AUTO ALL)
+
+target_code_coverage(test-sigstore AUTO ALL)
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml.sigstore.new.bundle" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
