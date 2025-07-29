@@ -79,7 +79,7 @@ jobs:
           ctest -V
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-15
     strategy:
       matrix:
         configuration: [Debug, Release]
