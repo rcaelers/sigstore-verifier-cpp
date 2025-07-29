@@ -177,7 +177,7 @@ namespace sigstore
       }
   }
 
-  outcome::std_result<bool> PublicKey::verify_signature(const std::vector<uint8_t> &data,
+  outcome::std_result<void> PublicKey::verify_signature(const std::vector<uint8_t> &data,
                                                         const std::vector<uint8_t> &signature,
                                                         DigestAlgorithm digest_algorithm) const
   {
@@ -230,19 +230,19 @@ namespace sigstore
     if (result == 1)
       {
         logger_->debug("Signature verification successful");
-        return true;
+        return outcome::success();
       }
     if (result == 0)
       {
         logger_->debug("Signature verification failed: signature does not match");
-        return false;
+        return SigstoreError::InvalidSignature;
       }
 
     logger_->error("Signature verification failed with error: {} {}", result, ERR_error_string(ERR_get_error(), nullptr));
     return SigstoreError::SystemError;
   }
 
-  outcome::std_result<bool> PublicKey::verify_signature(const std::string &data, const std::string &signature, DigestAlgorithm digest_algorithm) const
+  outcome::std_result<void> PublicKey::verify_signature(const std::string &data, const std::string &signature, DigestAlgorithm digest_algorithm) const
   {
     std::vector<uint8_t> data_bytes(data.begin(), data.end());
     std::vector<uint8_t> sig_bytes(signature.begin(), signature.end());

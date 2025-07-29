@@ -101,7 +101,6 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     auto result = store()->verify_certificate_chain(cert.value());
 
     EXPECT_TRUE(result.has_value());
-    EXPECT_TRUE(result.value());
   }
 
   TEST_F(CertificateStoreTest, TrustBundleNotObject)
@@ -249,8 +248,7 @@ YQ9QE6hWwYOByMUBGPAR3j3sN4V8Xl8Hy4FqFg6YGnC4hVq0OdU6D5dZeR8OKyLa
     if (cert_result.has_value())
       {
         auto verify_result = store()->verify_certificate_chain(cert_result.value());
-        EXPECT_TRUE(verify_result.has_value());
-        EXPECT_FALSE(verify_result.value());
+        EXPECT_FALSE(verify_result.has_value());
       }
   }
 
@@ -296,8 +294,7 @@ BmTwUi4ZdRl+7lw7zXhFp8dRyDqsxjWxKJ8Nl2e4Hj5oKrQ3J4rw9g5lPzJ7w8j7
     if (cert_result.has_value())
       {
         auto verify_result = store()->verify_certificate_chain(cert_result.value());
-        EXPECT_TRUE(verify_result.has_value());
-        EXPECT_FALSE(verify_result.value());
+        EXPECT_FALSE(verify_result.has_value());
       }
   }
 } // namespace sigstore::test

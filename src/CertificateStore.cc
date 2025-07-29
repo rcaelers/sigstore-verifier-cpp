@@ -166,7 +166,7 @@ namespace sigstore
     return outcome::success();
   }
 
-  outcome::std_result<bool> CertificateStore::verify_certificate_chain(const Certificate &cert)
+  outcome::std_result<void> CertificateStore::verify_certificate_chain(const Certificate &cert)
   {
     logger_->info("Verifying certificate chain");
     if (!root_store_)
@@ -213,14 +213,14 @@ namespace sigstore
     if (verify_result == 1)
       {
         log_validated_chain(ctx.get());
-        return true;
+        return outcome::success();
       }
 
     int error = X509_STORE_CTX_get_error(ctx.get());
     const char *error_string = X509_verify_cert_error_string(error);
     logger_->debug("Certificate chain verification failed: {}", error_string);
 
-    return false;
+    return SigstoreError::InvalidCertificate;
   }
 
   void CertificateStore::log_validated_chain(X509_STORE_CTX *cert_ctx)

@@ -47,7 +47,7 @@ namespace sigstore
     MerkleTreeValidator(MerkleTreeValidator &&) = delete;
     MerkleTreeValidator &operator=(MerkleTreeValidator &&) = delete;
 
-    outcome::std_result<bool> verify_inclusion_proof(const ::google::protobuf::RepeatedPtrField<std::string> &proof,
+    outcome::std_result<void> verify_inclusion_proof(const ::google::protobuf::RepeatedPtrField<std::string> &proof,
                                                      int64_t leaf_index,
                                                      int64_t tree_size,
                                                      const std::string &leaf_hash,

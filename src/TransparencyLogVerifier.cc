@@ -280,11 +280,7 @@ namespace sigstore
         auto verify_result = rekor_public_key_->verify_signature(log_entry, signature_data);
         if (!verify_result)
           {
-            return verify_result.error();
-          }
-        if (!verify_result.value())
-          {
-            logger_->error("Rekor log entry signature verification failed");
+            logger_->error("Rekor log entry signature verification failed: {}", verify_result.error().message());
             return SigstoreError::InvalidTransparencyLog;
           }
 
@@ -355,20 +351,11 @@ namespace sigstore
         auto verify_result = rekor_public_key_->verify_signature(canonicalized_payload, signature_data);
         if (!verify_result)
           {
-            return verify_result.error();
+            logger_->warn("Signed entry timestamp verification failed: {}", verify_result.error().message());
+            return SigstoreError::InvalidTransparencyLog;
           }
 
-        bool is_valid = verify_result.value();
-        if (!is_valid)
-          {
-            logger_->warn("Signed entry timestamp verification failed");
-          }
-
-        if (is_valid)
-          {
-            return outcome::success();
-          }
-        return SigstoreError::InvalidTransparencyLog;
+        return outcome::success();
       }
     catch (const std::exception &e)
       {

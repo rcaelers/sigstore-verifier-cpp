@@ -352,7 +352,7 @@ namespace sigstore
     return PublicKey::from_evp_key(pkey);
   }
 
-  outcome::std_result<bool> Certificate::verify_signature(const std::vector<uint8_t> &data,
+  outcome::std_result<void> Certificate::verify_signature(const std::vector<uint8_t> &data,
                                                           const std::vector<uint8_t> &signature,
                                                           DigestAlgorithm digest_algorithm) const
   {
@@ -365,7 +365,7 @@ namespace sigstore
     return public_key_result.value().verify_signature(data, signature, digest_algorithm);
   }
 
-  outcome::std_result<bool> Certificate::verify_signature(const std::string &data,
+  outcome::std_result<void> Certificate::verify_signature(const std::string &data,
                                                           const std::string &signature,
                                                           DigestAlgorithm digest_algorithm) const
   {

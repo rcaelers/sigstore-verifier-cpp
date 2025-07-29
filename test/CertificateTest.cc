@@ -117,17 +117,17 @@ namespace sigstore::test
     std::vector<uint8_t> empty_data;
     std::vector<uint8_t> empty_signature;
     auto result1 = cert.verify_signature(empty_data, empty_signature);
-    EXPECT_TRUE(result1.has_value()); // Should return a bool result, even if false
+    EXPECT_FALSE(result1.has_value()); // Should return an error for invalid signature
 
     // Test string version with empty data (should fail but not crash)
     std::string empty_data_str;
     std::string empty_signature_str;
     auto result2 = cert.verify_signature(empty_data_str, empty_signature_str);
-    EXPECT_TRUE(result2.has_value()); // Should return a bool result, even if false
+    EXPECT_FALSE(result2.has_value()); // Should return an error for invalid signature
 
     // Test with different digest algorithms
     auto result3 = cert.verify_signature(empty_data, empty_signature, DigestAlgorithm::SHA384);
-    EXPECT_TRUE(result3.has_value());
+    EXPECT_FALSE(result3.has_value());
   }
 
   TEST_F(CertificateTest, CertificateComparison)

@@ -517,7 +517,7 @@ TEST_F(BundleTest, ValidateLog_InvalidInclusionProofHashes)
   auto &[log_entry, bundle, cert] = log.value();
 
   auto result = verifier_->verify_transparency_log(log_entry, cert);
-  ASSERT_FALSE(result.has_error()); // TODO: check
+  ASSERT_TRUE(result.has_error());
 
   result = verifier_->verify_bundle_consistency(log_entry, bundle);
   ASSERT_FALSE(result.has_error());

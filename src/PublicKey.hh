@@ -69,11 +69,11 @@ namespace sigstore
     int get_key_size_bits() const;
     std::string get_algorithm_name() const;
 
-    outcome::std_result<bool> verify_signature(const std::vector<uint8_t> &data,
+    outcome::std_result<void> verify_signature(const std::vector<uint8_t> &data,
                                                const std::vector<uint8_t> &signature,
                                                DigestAlgorithm digest_algorithm = DigestAlgorithm::SHA256) const;
 
-    outcome::std_result<bool> verify_signature(const std::string &data,
+    outcome::std_result<void> verify_signature(const std::string &data,
                                                const std::string &signature,
                                                DigestAlgorithm digest_algorithm = DigestAlgorithm::SHA256) const;
 

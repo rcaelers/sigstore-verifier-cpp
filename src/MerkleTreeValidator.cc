@@ -49,7 +49,7 @@ namespace sigstore
 
   MerkleTreeValidator::MerkleTreeValidator() = default;
 
-  outcome::std_result<bool> MerkleTreeValidator::verify_inclusion_proof(const ::google::protobuf::RepeatedPtrField<std::string> &proof,
+  outcome::std_result<void> MerkleTreeValidator::verify_inclusion_proof(const ::google::protobuf::RepeatedPtrField<std::string> &proof,
                                                                         int64_t leaf_index,
                                                                         int64_t tree_size,
                                                                         const std::string &leaf_hash,
@@ -78,13 +78,11 @@ namespace sigstore
         if (is_valid)
           {
             logger_->debug("Inclusion proof verification successful");
-          }
-        else
-          {
-            logger_->warn("Inclusion proof verification failed: computed root doesn't match expected root");
+            return outcome::success();
           }
 
-        return is_valid;
+        logger_->warn("Inclusion proof verification failed: computed root doesn't match expected root");
+        return SigstoreError::InvalidTransparencyLog;
       }
     catch (const std::exception &e)
       {

@@ -73,7 +73,7 @@ namespace sigstore
       return bundle_result.value();
     }
 
-    outcome::std_result<bool> verify_signature(const std::string_view &content, const dev::sigstore::bundle::v1::Bundle &bundle)
+    outcome::std_result<void> verify_signature(const std::string_view &content, const dev::sigstore::bundle::v1::Bundle &bundle)
     {
       BundleHelper helper(bundle);
       auto certificate = helper.get_certificate();
@@ -86,7 +86,7 @@ namespace sigstore
       return certificate->verify_signature(content_bytes, signature_bytes);
     }
 
-    outcome::std_result<bool> verify_certificate_chain(const dev::sigstore::bundle::v1::Bundle &bundle)
+    outcome::std_result<void> verify_certificate_chain(const dev::sigstore::bundle::v1::Bundle &bundle)
     {
       BundleHelper helper(bundle);
       auto cert = helper.get_certificate();
@@ -109,24 +109,15 @@ namespace sigstore
       auto verify_result = verify_signature(data, bundle);
       if (!verify_result)
         {
-          logger_->error("Signature verification failed");
+          logger_->error("Signature verification failed: {}", verify_result.error().message());
           return verify_result.error();
-        }
-      if (!verify_result.value())
-        {
-          logger_->warn("Signature verification failed: signature does not match");
         }
 
       auto chain_result = verify_certificate_chain(bundle);
       if (!chain_result)
         {
-          logger_->error("Certificate chain verification failed");
+          logger_->error("Certificate chain verification failed: {}", chain_result.error().message());
           return chain_result.error();
-        }
-
-      if (!chain_result.value())
-        {
-          logger_->warn("Certificate chain verification failed: chain is not valid");
         }
 
       outcome::std_result<void> log_result = outcome::success();
@@ -139,7 +130,7 @@ namespace sigstore
           logger_->error("Transparency log verification failed: {}", log_result.error().message());
         }
 
-      auto is_valid = verify_result.value() && chain_result.value() && log_result.has_value() && log_result;
+      auto is_valid = verify_result.has_value() && chain_result.has_value() && log_result.has_value();
 
       if (is_valid)
         {
