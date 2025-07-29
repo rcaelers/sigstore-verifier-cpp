@@ -85,6 +85,8 @@ if(NOT absl_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
 
   set(ABSL_ENABLE_INSTALL ON)
+  set(ABSL_BUILD_SHARED_LIBS ON CACHE BOOL "Abseil: build shared libs")
+  set(ABSL_BUILD_STATIC_LIBS OFF CACHE BOOL "Abseil: disable static libs")
   FetchContent_Declare(
     abseil
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
@@ -108,6 +110,8 @@ if(NOT protobuf_FOUND)
   set(CMAKE_CXX_FLAGS_BACKUP "${CMAKE_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
 
+  set(protobuf_BUILD_SHARED_LIBS ON CACHE BOOL "Protobuf: build shared libs")
+  set(protobuf_BUILD_STATIC_LIBS OFF CACHE BOOL "Protobuf: do not build static")
   FetchContent_Declare(
     protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
