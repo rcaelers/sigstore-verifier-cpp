@@ -21,6 +21,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(FetchContent)
 include(GNUInstallDirs)
 include(CheckCXXCompilerFlag)
+include(generate_embedded_file)
 
 #----------------------------------------------------------------------------------------------------
 # Compiler

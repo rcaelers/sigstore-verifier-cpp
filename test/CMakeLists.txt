@@ -25,6 +25,7 @@ target_include_directories(test-sigstore
   PRIVATE
   ${PROJECT_SOURCE_DIR}/src
   ${PROJECT_SOURCE_DIR}/include
+  ${CMAKE_BINARY_DIR}/src/generated
 )
 
 target_code_coverage(test-sigstore AUTO ALL)

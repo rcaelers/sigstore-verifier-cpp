@@ -40,23 +40,7 @@
 #include "sigstore/SigstoreErrors.hh"
 
 #include "sigstore_rekor.pb.h"
-
-namespace
-{
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays)
-  const unsigned char embedded_rekor_pubkey[] = {
-#ifdef __clang__
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Wc23-extensions"
-#endif
-#embed "rekor.pem"
-#ifdef __clang__
-#  pragma clang diagnostic pop
-#endif
-  };
-  const size_t embedded_rekor_pubkey_size = sizeof(embedded_rekor_pubkey);
-
-} // namespace
+#include "embedded_rekor_pubkey.h"
 
 namespace outcome = boost::outcome_v2;
 
@@ -74,9 +58,8 @@ namespace sigstore
 
   outcome::std_result<void> TransparencyLogVerifier::load_embedded_certificates()
   {
-    std::string rekor_pem;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    rekor_pem.assign(reinterpret_cast<const char *>(embedded_rekor_pubkey), embedded_rekor_pubkey_size);
+    // Use the embedded rekor public key from generated header
+    std::string rekor_pem{embedded_rekor_pubkey};
 
     auto public_key_result = PublicKey::from_pem(rekor_pem);
     if (!public_key_result)

@@ -20,6 +20,16 @@ set(GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 file(MAKE_DIRECTORY ${GENERATED_DIR})
 
+embed_file_as_string_view(
+    "trustBundle.json"
+    "embedded_trust_bundle"
+)
+
+embed_file_as_string_view(
+    "rekor.pem"
+    "embedded_rekor_pubkey"
+)
+
 set(Protobuf_IMPORT_DIRS
     ${SIGSTORE_PROTO_DIR}/protos
     ${GOOGLEAPIS_PROTO_DIR}
@@ -72,6 +82,8 @@ target_sources(sigstore PRIVATE
   TransparencyLogVerifier.cc
   ${SIGSTORE_PROTO_SRCS}
   ${GOOGLEAPI_PROTO_SRCS}
+  ${embedded_trust_bundle_HEADER}
+  ${embedded_rekor_pubkey_HEADER}
 )
 
 target_link_libraries(sigstore PUBLIC protobuf::libprotobuf absl::base absl::status absl::strings)

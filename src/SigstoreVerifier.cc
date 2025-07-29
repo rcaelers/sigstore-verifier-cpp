@@ -36,23 +36,7 @@
 #include "sigstore/SigstoreErrors.hh"
 
 #include "sigstore_bundle.pb.h"
-
-namespace
-{
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays)
-  const unsigned char embedded_trust_bundle[] = {
-#ifdef __clang__
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Wc23-extensions"
-#endif
-#embed "trustBundle.json"
-#ifdef __clang__
-#  pragma clang diagnostic pop
-#endif
-  };
-  const size_t embedded_trust_bundle_size = sizeof(embedded_trust_bundle);
-
-} // namespace
+#include "embedded_trust_bundle.h"
 
 namespace sigstore
 {
@@ -173,8 +157,8 @@ namespace sigstore
     {
       logger_->debug("Loading embedded Fulcio CA certificates using CertificateStore");
 
-      // NOLINTNEXTLINE: Need to handle embedded binary data conversion
-      std::string trust_bundle_json(reinterpret_cast<const char *>(embedded_trust_bundle), embedded_trust_bundle_size);
+      // Use the embedded trust bundle as a string_view and convert to string
+      std::string trust_bundle_json{embedded_trust_bundle};
 
       auto certificate_store_res = certificate_store_->load_trust_bundle(trust_bundle_json);
       if (!certificate_store_res)

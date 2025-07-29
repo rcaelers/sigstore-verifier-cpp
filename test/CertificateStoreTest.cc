@@ -25,23 +25,7 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-
-namespace
-{
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays)
-  const unsigned char embedded_trust_bundle[] = {
-#ifdef __clang__
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Wc23-extensions"
-#endif
-#embed "../src/trustBundle.json"
-#ifdef __clang__
-#  pragma clang diagnostic pop
-#endif
-  };
-  const size_t embedded_trust_bundle_size = sizeof(embedded_trust_bundle);
-
-} // namespace
+#include "embedded_trust_bundle.h"
 
 namespace sigstore::test
 {
@@ -107,8 +91,8 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
 -----END CERTIFICATE-----)";
     auto cert = Certificate::from_pem(pem);
 
-    // NOLINTNEXTLINE: Need to handle embedded binary data conversion
-    std::string trust_bundle_json(reinterpret_cast<const char *>(embedded_trust_bundle), embedded_trust_bundle_size);
+    // Use the embedded trust bundle from generated header
+    std::string trust_bundle_json{embedded_trust_bundle};
     auto certificate_store_res = store()->load_trust_bundle(trust_bundle_json);
     EXPECT_TRUE(certificate_store_res.has_value());
     EXPECT_EQ(store()->get_root_certificate_count(), 1);
@@ -241,8 +225,8 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
 
   TEST_F(CertificateStoreTest, CertificateVerificationFailure)
   {
-    // NOLINTNEXTLINE: Need to handle embedded binary data conversion
-    std::string trust_bundle_json(reinterpret_cast<const char *>(embedded_trust_bundle), embedded_trust_bundle_size);
+    // Use the embedded trust bundle from generated header
+    std::string trust_bundle_json{embedded_trust_bundle};
     auto load_result = store()->load_trust_bundle(trust_bundle_json);
     EXPECT_TRUE(load_result.has_value());
 
@@ -295,8 +279,8 @@ YQ9QE6hWwYOByMUBGPAR3j3sN4V8Xl8Hy4FqFg6YGnC4hVq0OdU6D5dZeR8OKyLa
 
   TEST_F(CertificateStoreTest, CertificateVerificationWithLogging)
   {
-    // NOLINTNEXTLINE: Need to handle embedded binary data conversion
-    std::string trust_bundle_json(reinterpret_cast<const char *>(embedded_trust_bundle), embedded_trust_bundle_size);
+    // Use the embedded trust bundle from generated header
+    std::string trust_bundle_json{embedded_trust_bundle};
     auto load_result = store()->load_trust_bundle(trust_bundle_json);
     EXPECT_TRUE(load_result.has_value());
 
