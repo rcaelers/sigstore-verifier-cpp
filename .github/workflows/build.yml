@@ -62,8 +62,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             cmake \
-            gcc-15 \
-            g++-15 \
             ninja-build \
             libboost-all-dev \
             libssl-dev \
@@ -73,7 +71,7 @@ jobs:
       - name: Build and test
         run: |
           mkdir _build _deploy
-          cmake -GNinja -B_build -H. -DCMAKE_INSTALL_PREFIX=_deploy -DCMAKE_C_COMPILER=gcc-15 -DCMAKE_CXX_COMPILER=g++-15 -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          cmake -GNinja -B_build -H. -DCMAKE_INSTALL_PREFIX=_deploy -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
           ninja -C _build -v install
           cd _build
           ctest -V
