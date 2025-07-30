@@ -198,11 +198,11 @@ namespace sigstore
         auto certificate = Certificate::from_der(cert_data);
         if (!certificate)
           {
-            logger_->error("Failed to parse certificate from bundle: {}", certificate.error().message());
+            logger_->error("Failed to parse certificate from bundle");
             return nullptr;
           }
 
-        return std::make_shared<Certificate>(std::move(certificate.value()));
+        return certificate;
       }
     catch (const std::exception &e)
       {

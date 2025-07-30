@@ -58,11 +58,11 @@ namespace sigstore
     PublicKey &operator=(const PublicKey &) = delete;
     ~PublicKey() = default;
 
-    static outcome::std_result<PublicKey> from_pem(const std::string &key_pem);
-    static outcome::std_result<PublicKey> from_der(const std::vector<uint8_t> &key_der);
-    static outcome::std_result<PublicKey> from_der(const std::string &key_der);
-    static outcome::std_result<PublicKey> from_certificate(const std::string &cert_pem);
-    static outcome::std_result<PublicKey> from_evp_key(EVP_PKEY *evp_key);
+    static std::shared_ptr<PublicKey> from_pem(const std::string &key_pem);
+    static std::shared_ptr<PublicKey> from_der(const std::vector<uint8_t> &key_der);
+    static std::shared_ptr<PublicKey> from_der(const std::string &key_der);
+    static std::shared_ptr<PublicKey> from_certificate(const std::string &cert_pem);
+    static std::shared_ptr<PublicKey> from_evp_key(EVP_PKEY *evp_key);
 
     EVP_PKEY *get() const;
     KeyAlgorithm get_algorithm() const;

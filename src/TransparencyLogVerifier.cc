@@ -61,20 +61,20 @@ namespace sigstore
     // Use the embedded rekor public key from generated header
     std::string rekor_pem{embedded_rekor_pubkey};
 
-    auto public_key_result = PublicKey::from_pem(rekor_pem);
-    if (!public_key_result)
+    auto public_key = PublicKey::from_pem(rekor_pem);
+    if (!public_key)
       {
-        logger_->error("Failed to parse embedded Rekor public key: {}", public_key_result.error().message());
+        logger_->error("Failed to parse embedded Rekor public key");
         return outcome::failure(make_error_code(SigstoreError::InvalidCertificate));
       }
 
-    rekor_public_key_ = std::make_unique<PublicKey>(std::move(public_key_result.value()));
+    rekor_public_key_ = public_key;
     logger_->info("Loaded embedded Rekor public key successfully (type {})", rekor_public_key_->get_algorithm_name());
     return outcome::success();
   }
 
   outcome::std_result<void> TransparencyLogVerifier::verify_transparency_log(dev::sigstore::rekor::v1::TransparencyLogEntry entry,
-                                                                             const Certificate &certificate)
+                                                                            std::shared_ptr<Certificate> certificate)
   {
     try
       {
@@ -369,7 +369,7 @@ namespace sigstore
   // =============================================================================
 
   outcome::std_result<void> TransparencyLogVerifier::verify_integrated_time(const dev::sigstore::rekor::v1::TransparencyLogEntry &entry,
-                                                                            const Certificate &certificate)
+                                                                            std::shared_ptr<Certificate> certificate)
   {
     try
       {
@@ -378,7 +378,7 @@ namespace sigstore
         auto integrated_time = std::chrono::system_clock::from_time_t(static_cast<std::time_t>(integrated_time_seconds));
         logger_->debug("Verifying integrated time: {}", integrated_time);
 
-        auto cert_valid_at_time_result = certificate.is_valid_at_time(integrated_time);
+        auto cert_valid_at_time_result = certificate->is_valid_at_time(integrated_time);
         if (!cert_valid_at_time_result)
           {
             return cert_valid_at_time_result.error();
@@ -414,7 +414,7 @@ namespace sigstore
   // Certificates
   // =============================================================================
 
-  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_extensions(const Certificate &certificate,
+  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_extensions(const std::shared_ptr<Certificate> &certificate,
                                                                                    const std::string &expected_email,
                                                                                    const std::string &expected_issuer)
   {
@@ -423,7 +423,7 @@ namespace sigstore
         logger_->debug("Verifying certificate extensions");
 
         // Verify Subject Alternative Name (email)
-        std::string subject_email = certificate.subject_email();
+        std::string subject_email = certificate->subject_email();
         if (subject_email.empty())
           {
             logger_->error("Certificate does not contain a subject email in SAN extension");
@@ -439,7 +439,7 @@ namespace sigstore
           }
 
         // Verify OIDC issuer extension
-        std::string oidc_issuer = certificate.oidc_issuer();
+        std::string oidc_issuer = certificate->oidc_issuer();
         if (oidc_issuer.empty())
           {
             logger_->error("Certificate does not contain OIDC issuer extension");
@@ -476,13 +476,13 @@ namespace sigstore
       }
   }
 
-  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_key_usage(const Certificate &certificate)
+  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_key_usage(const std::shared_ptr<Certificate> certificate)
   {
     try
       {
         logger_->debug("Verifying certificate key usage");
 
-        X509 *cert = certificate.get();
+        X509 *cert = certificate->get();
         if (cert == nullptr)
           {
             logger_->error("Invalid certificate for key usage verification");
@@ -622,7 +622,7 @@ namespace sigstore
             if constexpr (std::is_same_v<T, HashedRekord>)
               {
                 auto signature_valid = verify_signature_consistency(spec, bundle_helper);
-                auto certificate_valid = verify_certificate_consistency(spec, *bundle_certificate);
+                auto certificate_valid = verify_certificate_consistency(spec, bundle_certificate);
                 auto hash_valid = bundle_message_digest_opt.has_value() ? verify_hash_consistency(spec, bundle_helper) : outcome::success();
                 if (signature_valid && certificate_valid && hash_valid)
                   {
@@ -660,18 +660,18 @@ namespace sigstore
     return outcome::success();
   }
 
-  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_consistency(const HashedRekord &rekord, const Certificate &bundle_certificate)
+  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_consistency(const HashedRekord &rekord, const std::shared_ptr<Certificate> bundle_certificate)
   {
     std::string tlog_certificate_pem = rekord.public_key;
 
-    auto tlog_cert_result = Certificate::from_pem(tlog_certificate_pem);
-    if (!tlog_cert_result)
+    auto tlog_cert = Certificate::from_pem(tlog_certificate_pem);
+    if (!tlog_cert)
       {
         logger_->error("Failed to parse transparency log certificate from PEM");
         return SigstoreError::InvalidTransparencyLog;
       }
 
-    if (bundle_certificate != tlog_cert_result.value())
+    if (*bundle_certificate != *tlog_cert)
       {
         logger_->error("Certificate mismatch between bundle and transparency log");
         return SigstoreError::InvalidTransparencyLog;

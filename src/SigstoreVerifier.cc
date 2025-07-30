@@ -90,7 +90,7 @@ namespace sigstore
     {
       BundleHelper helper(bundle);
       auto cert = helper.get_certificate();
-      return certificate_store_->verify_certificate_chain(*cert);
+      return certificate_store_->verify_certificate_chain(cert);
     }
 
     outcome::std_result<bool> verify(std::string_view data, std::string_view bundle_json)

@@ -57,60 +57,60 @@ namespace sigstore
     return x509_cert_.get();
   }
 
-  outcome::std_result<Certificate> Certificate::from_pem(const std::string &cert_pem)
+  std::shared_ptr<Certificate> Certificate::from_pem(const std::string &cert_pem)
   {
     std::unique_ptr<BIO, decltype(&BIO_free)> bio(BIO_new_mem_buf(cert_pem.c_str(), -1), BIO_free);
     if (!bio)
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
 
     X509 *cert = PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr);
     if (cert == nullptr)
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
-    return Certificate(std::unique_ptr<X509, decltype(&X509_free)>(cert, X509_free));
+    return std::make_shared<Certificate>(std::unique_ptr<X509, decltype(&X509_free)>(cert, X509_free));
   }
 
-  outcome::std_result<Certificate> Certificate::from_der(const std::vector<uint8_t> &cert_der)
+  std::shared_ptr<Certificate> Certificate::from_der(const std::vector<uint8_t> &cert_der)
   {
     std::unique_ptr<BIO, decltype(&BIO_free)> bio(BIO_new_mem_buf(cert_der.data(), static_cast<int>(cert_der.size())), BIO_free);
     if (!bio)
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
 
     X509 *cert = d2i_X509_bio(bio.get(), nullptr);
     if (cert == nullptr)
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
-    return Certificate(std::unique_ptr<X509, decltype(&X509_free)>(cert, X509_free));
+    return std::make_shared<Certificate>(std::unique_ptr<X509, decltype(&X509_free)>(cert, X509_free));
   }
 
-  outcome::std_result<Certificate> Certificate::from_der(const std::string &cert_der)
+  std::shared_ptr<Certificate> Certificate::from_der(const std::string &cert_der)
   {
     std::unique_ptr<BIO, decltype(&BIO_free)> bio(BIO_new_mem_buf(cert_der.data(), static_cast<int>(cert_der.size())), BIO_free);
     if (!bio)
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
 
     X509 *cert = d2i_X509_bio(bio.get(), nullptr);
     if (cert == nullptr)
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
-    return Certificate(std::unique_ptr<X509, decltype(&X509_free)>(cert, X509_free));
+    return std::make_shared<Certificate>(std::unique_ptr<X509, decltype(&X509_free)>(cert, X509_free));
   }
 
-  outcome::std_result<Certificate> Certificate::from_cert(const ::dev::sigstore::common::v1::X509Certificate &x509_cert)
+  std::shared_ptr<Certificate> Certificate::from_cert(const ::dev::sigstore::common::v1::X509Certificate &x509_cert)
   {
     std::string cert_der = x509_cert.raw_bytes();
     if (cert_der.empty())
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
 
     return from_der(cert_der);
@@ -334,19 +334,19 @@ namespace sigstore
     return valid;
   }
 
-  outcome::std_result<PublicKey> Certificate::get_public_key() const
+  std::shared_ptr<PublicKey> Certificate::get_public_key() const
   {
     if (!x509_cert_)
       {
         logger_->error("Cannot extract public key: no certificate loaded");
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
 
     EVP_PKEY *pkey = X509_get_pubkey(x509_cert_.get());
     if (pkey == nullptr)
       {
         logger_->error("Failed to extract public key from certificate");
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
 
     return PublicKey::from_evp_key(pkey);
@@ -356,26 +356,26 @@ namespace sigstore
                                                           const std::vector<uint8_t> &signature,
                                                           DigestAlgorithm digest_algorithm) const
   {
-    auto public_key_result = get_public_key();
-    if (!public_key_result)
+    auto public_key = get_public_key();
+    if (!public_key)
       {
-        return public_key_result.error();
+        return SigstoreError::InvalidCertificate;
       }
 
-    return public_key_result.value().verify_signature(data, signature, digest_algorithm);
+    return public_key->verify_signature(data, signature, digest_algorithm);
   }
 
   outcome::std_result<void> Certificate::verify_signature(const std::string &data,
                                                           const std::string &signature,
                                                           DigestAlgorithm digest_algorithm) const
   {
-    auto public_key_result = get_public_key();
-    if (!public_key_result)
+    auto public_key = get_public_key();
+    if (!public_key)
       {
-        return public_key_result.error();
+        return SigstoreError::InvalidCertificate;
       }
 
-    return public_key_result.value().verify_signature(data, signature, digest_algorithm);
+    return public_key->verify_signature(data, signature, digest_algorithm);
   }
 
   bool Certificate::operator==(const Certificate &other) const

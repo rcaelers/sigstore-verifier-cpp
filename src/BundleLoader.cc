@@ -102,8 +102,8 @@ namespace sigstore
         logger_->error("Bundle verification material certificate does not contain raw bytes");
         return SigstoreError::InvalidBundle;
       }
-    const auto &cert = Certificate::from_cert(bundle.verification_material().certificate());
-    if (!cert.has_value())
+    auto cert = Certificate::from_cert(bundle.verification_material().certificate());
+    if (!cert)
       {
         logger_->error("Bundle verification material certificate is not valid");
         return SigstoreError::InvalidBundle;

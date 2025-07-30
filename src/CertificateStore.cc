@@ -60,8 +60,8 @@ namespace sigstore
             return SigstoreError::JsonParseError;
           }
 
-        std::vector<Certificate> intermediate_certificates;
-        std::vector<Certificate> root_certificates;
+        std::vector<std::shared_ptr<Certificate>> intermediate_certificates;
+        std::vector<std::shared_ptr<Certificate>> root_certificates;
         for (const auto &chain: chains)
           {
             auto result = load_chain(chain, intermediate_certificates, root_certificates);
@@ -90,8 +90,8 @@ namespace sigstore
   }
 
   outcome::std_result<void> CertificateStore::load_chain(const boost::json::value &chain,
-                                                         std::vector<Certificate> &intermediate_certificates,
-                                                         std::vector<Certificate> &root_certificates)
+                                                         std::vector<std::shared_ptr<Certificate>> &intermediate_certificates,
+                                                         std::vector<std::shared_ptr<Certificate>> &root_certificates)
   {
     if (!chain.is_object())
       {
@@ -123,23 +123,22 @@ namespace sigstore
           }
 
         std::string cert_pem = std::string(cert_str.as_string());
-        auto cert_result = Certificate::from_pem(cert_pem);
-        if (!cert_result)
+        auto cert = Certificate::from_pem(cert_pem);
+        if (!cert)
           {
             logger_->warn("Invalid certificate in trust bundle");
             return SigstoreError::JsonParseError;
           }
-        auto &cert = cert_result.value();
 
-        bool is_root_ca = (i == certificates.size() - 1) || cert.is_self_signed();
+        bool is_root_ca = (i == certificates.size() - 1) || cert->is_self_signed();
 
         if (is_root_ca)
           {
-            root_certificates.emplace_back(std::move(cert));
+            root_certificates.emplace_back(cert);
           }
         else
           {
-            intermediate_certificates.emplace_back(std::move(cert));
+            intermediate_certificates.emplace_back(cert);
           }
       }
     return outcome::success();
@@ -157,7 +156,7 @@ namespace sigstore
 
     for (const auto &root_cert: root_certificates_)
       {
-        if (X509_STORE_add_cert(store.get(), root_cert.get()) != 1)
+        if (X509_STORE_add_cert(store.get(), root_cert->get()) != 1)
           {
             logger_->warn("Failed to add root certificate to store, may be duplicate");
           }
@@ -166,7 +165,7 @@ namespace sigstore
     return outcome::success();
   }
 
-  outcome::std_result<void> CertificateStore::verify_certificate_chain(const Certificate &cert)
+  outcome::std_result<void> CertificateStore::verify_certificate_chain(std::shared_ptr<Certificate> cert)
   {
     logger_->info("Verifying certificate chain");
     if (!root_store_)
@@ -186,11 +185,11 @@ namespace sigstore
 
     for (const auto &intermediate_cert: intermediate_certificates_)
       {
-        X509_up_ref(intermediate_cert.get());
-        if (sk_X509_push(untrusted.get(), intermediate_cert.get()) <= 0)
+        X509_up_ref(intermediate_cert->get());
+        if (sk_X509_push(untrusted.get(), intermediate_cert->get()) <= 0)
           {
             logger_->warn("Failed to add intermediate certificate to stack");
-            X509_free(intermediate_cert.get());
+            X509_free(intermediate_cert->get());
             break;
           }
       }
@@ -202,7 +201,7 @@ namespace sigstore
         return SigstoreError::SystemError;
       }
 
-    if (X509_STORE_CTX_init(ctx.get(), root_store_.get(), cert.get(), untrusted.get()) != 1)
+    if (X509_STORE_CTX_init(ctx.get(), root_store_.get(), cert->get(), untrusted.get()) != 1)
       {
         logger_->error("Failed to initialize verification context");
         return SigstoreError::SystemError;

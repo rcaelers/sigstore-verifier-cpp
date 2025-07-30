@@ -53,10 +53,9 @@ TEST_F(PublicKeyTest, CreateFromValidPEM)
   auto result = PublicKey::from_pem(sample_rsa_pem);
   if (result)
     {
-      auto &key = result.value();
-      EXPECT_EQ(key.get_algorithm(), KeyAlgorithm::RSA);
-      EXPECT_GT(key.get_key_size_bits(), 0);
-      EXPECT_EQ(key.get_algorithm_name(), "RSA");
+      EXPECT_EQ(result->get_algorithm(), KeyAlgorithm::RSA);
+      EXPECT_GT(result->get_key_size_bits(), 0);
+      EXPECT_EQ(result->get_algorithm_name(), "RSA");
     }
   else
     {
@@ -69,13 +68,13 @@ TEST_F(PublicKeyTest, InvalidPEMHandling)
 {
   const std::string invalid_pem = "-----BEGIN PUBLIC KEY-----\nINVALID_DATA\n-----END PUBLIC KEY-----";
   auto result = PublicKey::from_pem(invalid_pem);
-  EXPECT_FALSE(result.has_value());
+  EXPECT_FALSE(result);
 }
 
 TEST_F(PublicKeyTest, EmptyPEMHandling)
 {
   auto result = PublicKey::from_pem("");
-  EXPECT_FALSE(result.has_value());
+  EXPECT_FALSE(result);
 }
 
 TEST_F(PublicKeyTest, KeyAlgorithmNames)

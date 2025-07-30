@@ -49,22 +49,22 @@ namespace sigstore
     CertificateStore &operator=(CertificateStore &&) noexcept = default;
 
     outcome::std_result<void> load_trust_bundle(const std::string &trust_bundle_json);
-    outcome::std_result<void> verify_certificate_chain(const Certificate &cert);
+    outcome::std_result<void> verify_certificate_chain(std::shared_ptr<Certificate> cert);
 
     size_t get_root_certificate_count() const;
     size_t get_intermediate_certificate_count() const;
 
   private:
     outcome::std_result<void> load_chain(const boost::json::value &chain,
-                                         std::vector<Certificate> &intermediate_certificates,
-                                         std::vector<Certificate> &root_certificates);
+                                         std::vector<std::shared_ptr<Certificate>> &intermediate_certificates,
+                                         std::vector<std::shared_ptr<Certificate>> &root_certificates);
     outcome::std_result<void> init_root_store();
     void log_validated_chain(X509_STORE_CTX *cert_ctx);
 
   private:
     std::shared_ptr<spdlog::logger> logger_{Logging::create("sigstore:certificatestore")};
-    std::vector<Certificate> intermediate_certificates_;
-    std::vector<Certificate> root_certificates_;
+    std::vector<std::shared_ptr<Certificate>> intermediate_certificates_;
+    std::vector<std::shared_ptr<Certificate>> root_certificates_;
     std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)> root_store_{nullptr, X509_STORE_free};
   };
 

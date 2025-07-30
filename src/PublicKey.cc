@@ -39,88 +39,88 @@ namespace sigstore
   {
   }
 
-  outcome::std_result<PublicKey> PublicKey::from_pem(const std::string &key_pem)
+  std::shared_ptr<PublicKey> PublicKey::from_pem(const std::string &key_pem)
   {
     std::unique_ptr<BIO, decltype(&BIO_free)> bio(BIO_new_mem_buf(key_pem.c_str(), -1), BIO_free);
     if (!bio)
       {
-        return SigstoreError::InvalidPublicKey;
+        return nullptr;
       }
 
     EVP_PKEY *key = PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr);
     if (key == nullptr)
       {
-        return SigstoreError::InvalidPublicKey;
+        return nullptr;
       }
 
-    return PublicKey(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(key));
+    return std::make_shared<PublicKey>(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(key));
   }
 
-  outcome::std_result<PublicKey> PublicKey::from_der(const std::vector<uint8_t> &key_der)
+  std::shared_ptr<PublicKey> PublicKey::from_der(const std::vector<uint8_t> &key_der)
   {
     std::unique_ptr<BIO, decltype(&BIO_free)> bio(BIO_new_mem_buf(key_der.data(), static_cast<int>(key_der.size())), BIO_free);
     if (!bio)
       {
-        return SigstoreError::InvalidPublicKey;
+        return nullptr;
       }
 
     EVP_PKEY *key = d2i_PUBKEY_bio(bio.get(), nullptr);
     if (key == nullptr)
       {
-        return SigstoreError::InvalidPublicKey;
+        return nullptr;
       }
 
-    return PublicKey(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(key));
+    return std::make_shared<PublicKey>(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(key));
   }
 
-  outcome::std_result<PublicKey> PublicKey::from_der(const std::string &key_der)
+  std::shared_ptr<PublicKey> PublicKey::from_der(const std::string &key_der)
   {
     std::unique_ptr<BIO, decltype(&BIO_free)> bio(BIO_new_mem_buf(key_der.data(), static_cast<int>(key_der.size())), BIO_free);
     if (!bio)
       {
-        return SigstoreError::InvalidPublicKey;
+        return nullptr;
       }
 
     EVP_PKEY *key = d2i_PUBKEY_bio(bio.get(), nullptr);
     if (key == nullptr)
       {
-        return SigstoreError::InvalidPublicKey;
+        return nullptr;
       }
 
-    return PublicKey(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(key));
+    return std::make_shared<PublicKey>(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(key));
   }
 
-  outcome::std_result<PublicKey> PublicKey::from_certificate(const std::string &cert_pem)
+  std::shared_ptr<PublicKey> PublicKey::from_certificate(const std::string &cert_pem)
   {
     std::unique_ptr<BIO, decltype(&BIO_free)> bio(BIO_new_mem_buf(cert_pem.c_str(), -1), BIO_free);
     if (!bio)
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
 
     std::unique_ptr<X509, decltype(&X509_free)> cert(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr), X509_free);
     if (!cert)
       {
-        return SigstoreError::InvalidCertificate;
+        return nullptr;
       }
 
     EVP_PKEY *key = X509_get_pubkey(cert.get());
     if (key == nullptr)
       {
-        return SigstoreError::InvalidPublicKey;
+        return nullptr;
       }
 
-    return PublicKey(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(key));
+    return std::make_shared<PublicKey>(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(key));
   }
 
-  outcome::std_result<PublicKey> PublicKey::from_evp_key(EVP_PKEY *evp_key)
+  std::shared_ptr<PublicKey> PublicKey::from_evp_key(EVP_PKEY *evp_key)
   {
     if (evp_key == nullptr)
       {
-        return SigstoreError::InvalidPublicKey;
+        return nullptr;
       }
 
-    return PublicKey(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(evp_key));
+    return std::make_shared<PublicKey>(std::unique_ptr<EVP_PKEY, EVPKeyDeleter>(evp_key));
   }
 
   EVP_PKEY *PublicKey::get() const

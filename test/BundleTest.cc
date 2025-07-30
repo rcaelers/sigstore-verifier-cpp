@@ -69,7 +69,7 @@ protected:
     verifier_ = std::make_unique<TransparencyLogVerifier>();
   }
 
-  std::unique_ptr<Certificate> create_test_certificate()
+  std::shared_ptr<Certificate> create_test_certificate()
   {
     std::string cert_base64 =
       "MIIC1TCCAlqgAwIBAgIUVyf2i/kSHHcUvZCiAGB2q+B39eMwCgYIKoZIzj0EAwMwNzEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MR4wHAYDVQQDExVzaWdzdG9yZS1pbnRlcm1lZGlhdGUwHhcNMjUwNzEwMTgwNjA2WhcNMjUwNzEwMTgxNjA2WjAAMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIZLdcmiYUHnyCmbyDODkt0TUS3hnUfD6hLLqWYKR0X48eL6aR7UsehluA0gYtNKypbJOLJdY/P94uKGZ1lvqbaOCAXkwggF1MA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDAzAdBgNVHQ4EFgQUWg8/Map8qWkIDlker4y1lyi8mEswHwYDVR0jBBgwFoAU39Ppz1YkEZb5qNjpKFWixi4YZD8wIwYDVR0RAQH/BBkwF4EVcm9iLmNhZWxlcnNAZ21haWwuY29tMCwGCisGAQQBg78wAQEEHmh0dHBzOi8vZ2l0aHViLmNvbS9sb2dpbi9vYXV0aDAuBgorBgEEAYO/MAEIBCAMHmh0dHBzOi8vZ2l0aHViLmNvbS9sb2dpbi9vYXV0aDCBigYKKwYBBAHWeQIEAgR8BHoAeAB2AN09MGrGxxEyYxkeHJlnNwKiSl643jyt/4eKcoAvKe6OAAABl/WEIfUAAAQDAEcwRQIhANStMu8Ou4C2PHLIO6l5S0HZhdKVmIE9bTSobiOkjQBIAiATIbUPI8/xWAdKw3qTYvynwqTN1Ic4GSQZiMrnSy9P/jAKBggqhkjOPQQDAwNpADBmAjEAyLhTOg6lSrmMjX1HmcnbC/LSNJMBwugR3Vg1T5b81V5Ky3wLfDFM7pi4xRht4MONAjEAwEtFcEY1XfinR+mknwGt653egNEnUJmRK48UbplR9KmQ6/9iISMk50sX1JI2tlxP";
@@ -79,11 +79,7 @@ protected:
         std::string cert_der_str = Base64::decode(cert_base64);
         std::vector<uint8_t> cert_der(cert_der_str.begin(), cert_der_str.end());
 
-        auto cert_result = Certificate::from_der(cert_der);
-        if (cert_result)
-          {
-            return std::make_unique<Certificate>(std::move(cert_result.value()));
-          }
+        return Certificate::from_der(cert_der);
       }
     catch (const std::exception &e)
       {
@@ -93,7 +89,7 @@ protected:
     return nullptr;
   }
 
-  outcome::std_result<std::tuple<dev::sigstore::rekor::v1::TransparencyLogEntry, dev::sigstore::bundle::v1::Bundle, Certificate>>
+  outcome::std_result<std::tuple<dev::sigstore::rekor::v1::TransparencyLogEntry, dev::sigstore::bundle::v1::Bundle, std::shared_ptr<Certificate>>>
   load_standard_bundle(std::function<void(boost::json::value &json_val)> patch = [](boost::json::value &json_val) {})
   {
     std::string file_path = "appcast-sigstore.xml.sigstore.new.bundle";
@@ -131,7 +127,6 @@ protected:
             ADD_FAILURE() << "Failed to apply patch to JSON: " << e.what();
             return SigstoreError::InvalidBundle;
           }
-        spdlog::debug("Loaded bundle JSON: {}", boost::json::serialize(json_val));
         SigstoreBundleLoader loader;
         auto bundle_result = loader.load_from_json(boost::json::serialize(json_val));
         if (!bundle_result)
@@ -145,13 +140,12 @@ protected:
           {
             return SigstoreError::InvalidBundle;
           }
-        auto cert_result = Certificate::from_cert(bundle.verification_material().certificate());
-        if (!cert_result.has_value())
+        auto cert = Certificate::from_cert(bundle.verification_material().certificate());
+        if (!cert)
           {
             return SigstoreError::InvalidBundle;
           }
-        auto cert = std::move(cert_result.value());
-        return {std::move(log_entries[0]), std::move(bundle), std::move(cert)};
+        return {std::move(log_entries[0]), std::move(bundle), cert};
       }
     catch (const std::exception &e)
       {
@@ -195,7 +189,6 @@ TEST_F(BundleTest, ValidateValidBundle)
 {
   auto log = load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
-  ;
   auto &[log_entry, bundle, cert] = log.value();
 
   auto result = verifier_->verify_bundle_consistency(log_entry, bundle);
