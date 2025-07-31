@@ -37,23 +37,22 @@ namespace sigstore
         return SigstoreError::InvalidBundle;
       }
 
-    try
+    std::ifstream file(file_path, std::ios::in | std::ios::binary);
+    if (!file.is_open())
       {
-        std::ifstream file(file_path, std::ios::in | std::ios::binary);
-        if (!file.is_open())
-          {
-            logger_->error("Failed to open file: {}", file_path.string());
-            return SigstoreError::InvalidBundle;
-          }
-
-        std::string json_content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-        return load_from_json(json_content);
-      }
-    catch (const std::exception &e)
-      {
-        logger_->error("Exception while reading file {}: {}", file_path.string(), e.what());
+        logger_->error("Failed to open file: {}", file_path.string());
         return SigstoreError::InvalidBundle;
       }
+
+    std::string json_content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    if (file.bad())
+      {
+        logger_->error("Error while reading file: {}", file_path.string());
+        return SigstoreError::InvalidBundle;
+      }
+
+    return load_from_json(json_content);
   }
 
   outcome::std_result<dev::sigstore::bundle::v1::Bundle> SigstoreBundleLoader::load_from_json(const std::string &json_content)

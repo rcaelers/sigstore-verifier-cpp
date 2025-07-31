@@ -121,7 +121,7 @@ namespace sigstore
     for (int i = 0; i < proof.size(); ++i)
       {
         logger_->debug("Step {}: proof={}", i, proof[i]);
-        std::string sibling_hash = proof[i]; // Base64::decode(proof[i]);
+        std::string sibling_hash = proof[i];
         logger_->debug("Step {}: leaf_index={}, sibling_hash={}", i, leaf_index, binary_to_hex_preview(sibling_hash));
 
         if (leaf_index % 2 == 0 && i < inner)

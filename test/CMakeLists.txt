@@ -1,4 +1,5 @@
 add_executable(test-sigstore
+  BundleHelperTest.cc
   BundleLoaderTest.cc
   BundleTest.cc
   CanonicalBodyParserTest.cc
@@ -28,10 +29,8 @@ target_include_directories(test-sigstore
   ${CMAKE_BINARY_DIR}/src/generated
 )
 
-target_code_coverage(test-sigstore AUTO ALL)
-
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml.sigstore.new.bundle" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml.sigstore.bundle" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/body.json" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/tlog.json" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/corrupted.json" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")

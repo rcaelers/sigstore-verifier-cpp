@@ -23,6 +23,7 @@
 
 #include "BundleLoader.hh"
 #include "sigstore_bundle.pb.h"
+#include "TestUtils.hh"
 
 namespace sigstore::test
 {
@@ -42,7 +43,7 @@ namespace sigstore::test
   TEST_F(SigstoreBundleLoaderTest, LoadFromFile)
   {
     SigstoreBundleLoader loader;
-    auto result = loader.load_from_file("appcast-sigstore.xml.sigstore.new.bundle");
+    auto result = loader.load_from_file(find_test_data_file("appcast-sigstore.xml.sigstore.bundle"));
     ASSERT_TRUE(result.has_value()) << "Failed to load file: " << result.error().message();
 
     const auto &bundle = result.value();
@@ -76,7 +77,7 @@ namespace sigstore::test
   TEST_F(SigstoreBundleLoaderTest, FileIsCorrupted)
   {
     SigstoreBundleLoader loader;
-    std::filesystem::path corrupted_file = "corrupted.json";
+    std::string corrupted_file = find_test_data_file("corrupted.json");
     auto result = loader.load_from_file(corrupted_file);
     EXPECT_TRUE(result.has_error());
   }

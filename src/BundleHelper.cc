@@ -192,23 +192,15 @@ namespace sigstore
         return nullptr;
       }
 
-    try
+    const auto &cert_data = verification_material.certificate().raw_bytes();
+    auto certificate = Certificate::from_der(cert_data);
+    if (!certificate)
       {
-        const auto &cert_data = verification_material.certificate().raw_bytes();
-        auto certificate = Certificate::from_der(cert_data);
-        if (!certificate)
-          {
-            logger_->error("Failed to parse certificate from bundle");
-            return nullptr;
-          }
-
-        return certificate;
-      }
-    catch (const std::exception &e)
-      {
-        logger_->error("Exception while extracting certificate: {}", e.what());
+        logger_->error("Failed to parse certificate from bundle");
         return nullptr;
       }
+
+    return certificate;
   }
 
   std::string BundleHelper::extract_signature() const

@@ -37,23 +37,22 @@ namespace sigstore
         return SigstoreError::InvalidTransparencyLog;
       }
 
-    try
+    std::ifstream file(file_path, std::ios::in | std::ios::binary);
+    if (!file.is_open())
       {
-        std::ifstream file(file_path, std::ios::in | std::ios::binary);
-        if (!file.is_open())
-          {
-            logger_->error("Failed to open file: {}", file_path.string());
-            return SigstoreError::InvalidTransparencyLog;
-          }
-
-        std::string json_content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-        return load_from_json(json_content);
-      }
-    catch (const std::exception &e)
-      {
-        logger_->error("Exception while reading file {}: {}", file_path.string(), e.what());
+        logger_->error("Failed to open file: {}", file_path.string());
         return SigstoreError::InvalidTransparencyLog;
       }
+
+    std::string json_content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    if (file.bad())
+      {
+        logger_->error("Error while reading file: {}", file_path.string());
+        return SigstoreError::InvalidTransparencyLog;
+      }
+
+    return load_from_json(json_content);
   }
 
   outcome::std_result<std::unique_ptr<dev::sigstore::rekor::v1::TransparencyLogEntry>> TransparencyLogLoader::load_from_json(

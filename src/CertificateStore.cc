@@ -36,57 +36,76 @@ namespace sigstore
 
   outcome::std_result<void> CertificateStore::load_trust_bundle(const std::string &trust_bundle_json)
   {
-    try
+    boost::system::error_code ec;
+    boost::json::value json_val = boost::json::parse(trust_bundle_json, ec);
+    if (ec)
       {
-        boost::json::value json_val = boost::json::parse(trust_bundle_json);
-
-        if (!json_val.is_object())
-          {
-            logger_->error("Trust bundle is not a valid JSON object");
-            return SigstoreError::JsonParseError;
-          }
-
-        const auto &obj = json_val.as_object();
-        if (!obj.contains("chains") || !obj.at("chains").is_array())
-          {
-            logger_->error("Trust bundle does not contain chains array");
-            return SigstoreError::JsonParseError;
-          }
-
-        const auto &chains = obj.at("chains").as_array();
-        if (chains.empty())
-          {
-            logger_->error("Trust bundle chains array is empty");
-            return SigstoreError::JsonParseError;
-          }
-
-        std::vector<std::shared_ptr<Certificate>> intermediate_certificates;
-        std::vector<std::shared_ptr<Certificate>> root_certificates;
-        for (const auto &chain: chains)
-          {
-            auto result = load_chain(chain, intermediate_certificates, root_certificates);
-            if (!result)
-              {
-                logger_->error("Failed to load chain: {}", result.error().message());
-                return result;
-              }
-          }
-
-        if (root_certificates.empty())
-          {
-            logger_->error("No valid root certificates found in trust bundle");
-            return SigstoreError::InvalidCertificate;
-          }
-
-        intermediate_certificates_ = std::move(intermediate_certificates);
-        root_certificates_ = std::move(root_certificates);
-        return init_root_store();
-      }
-    catch (const std::exception &e)
-      {
-        logger_->error("Failed to parse trust bundle: {}", e.what());
+        logger_->error("Failed to parse trust bundle JSON: {}", ec.message());
         return SigstoreError::JsonParseError;
       }
+
+    if (!json_val.is_object())
+      {
+        logger_->error("Trust bundle is not a valid JSON object");
+        return SigstoreError::JsonParseError;
+      }
+
+    const auto &obj = json_val.as_object();
+    if (!obj.contains("chains") || !obj.at("chains").is_array())
+      {
+        logger_->error("Trust bundle does not contain chains array");
+        return SigstoreError::JsonParseError;
+      }
+
+    const auto &chains = obj.at("chains").as_array();
+    if (chains.empty())
+      {
+        logger_->error("Trust bundle chains array is empty");
+        return SigstoreError::JsonParseError;
+      }
+
+    std::vector<std::shared_ptr<Certificate>> intermediate_certificates;
+    std::vector<std::shared_ptr<Certificate>> root_certificates;
+    for (const auto &chain: chains)
+      {
+        auto result = load_chain(chain, intermediate_certificates, root_certificates);
+        if (!result)
+          {
+            logger_->error("Failed to load chain: {}", result.error().message());
+            return result;
+          }
+      }
+
+    if (root_certificates.empty())
+      {
+        logger_->error("No valid root certificates found in trust bundle");
+        return SigstoreError::InvalidCertificate;
+      }
+
+    intermediate_certificates_ = std::move(intermediate_certificates);
+    root_certificates_ = std::move(root_certificates);
+    return init_root_store();
+  }
+
+  outcome::std_result<void> CertificateStore::add_ca_certificates(const std::string &ca_certificate)
+  {
+    auto cert = Certificate::from_pem(ca_certificate);
+    if (!cert)
+      {
+        logger_->error("Failed to parse CA certificate");
+        return SigstoreError::InvalidCertificate;
+      }
+
+    if (cert->is_self_signed())
+      {
+        root_certificates_.emplace_back(cert);
+      }
+    else
+      {
+        intermediate_certificates_.emplace_back(cert);
+      }
+
+    return init_root_store();
   }
 
   outcome::std_result<void> CertificateStore::load_chain(const boost::json::value &chain,

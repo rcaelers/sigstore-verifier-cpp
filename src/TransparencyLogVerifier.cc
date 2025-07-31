@@ -26,7 +26,6 @@
 #include <cctype>
 #include <boost/json.hpp>
 #include <openssl/evp.h>
-#include <array>
 #include <fmt/chrono.h>
 
 #include "BundleHelper.hh"
@@ -74,49 +73,42 @@ namespace sigstore
   }
 
   outcome::std_result<void> TransparencyLogVerifier::verify_transparency_log(dev::sigstore::rekor::v1::TransparencyLogEntry entry,
-                                                                            std::shared_ptr<Certificate> certificate)
+                                                                            std::shared_ptr<Certificate> certificate,
+                                                                            const std::vector<std::pair<std::string, std::string>> &expected_identities)
   {
-    try
+    logger_->debug("Verifying transparency log entry with log index: {}", entry.log_index());
+
+    auto inclusion_valid = verify_inclusion_proof(entry);
+    if (!inclusion_valid)
       {
-        logger_->debug("Verifying transparency log entry with log index: {}", entry.log_index());
-
-        auto inclusion_valid = verify_inclusion_proof(entry);
-        if (!inclusion_valid)
-          {
-            return inclusion_valid.error();
-          }
-
-        auto timestamp_valid = verify_signed_entry_timestamp(entry);
-        if (!timestamp_valid)
-          {
-            return timestamp_valid.error();
-          }
-
-        auto integrated_time_valid = verify_integrated_time(entry, certificate);
-        if (!integrated_time_valid)
-          {
-            return integrated_time_valid.error();
-          }
-
-        auto extensions_valid = verify_certificate_extensions(certificate);
-        if (!extensions_valid)
-          {
-            return extensions_valid.error();
-          }
-
-        auto key_usage_valid = verify_certificate_key_usage(certificate);
-        if (!key_usage_valid)
-          {
-            return key_usage_valid.error();
-          }
-        logger_->debug("Certificate key usage validation successful");
-        return outcome::success();
+        return inclusion_valid.error();
       }
-    catch (const std::exception &e)
+
+    auto timestamp_valid = verify_signed_entry_timestamp(entry);
+    if (!timestamp_valid)
       {
-        logger_->error("Error during transparency log verification: {}", e.what());
-        return SigstoreError::SystemError;
+        return timestamp_valid.error();
       }
+
+    auto integrated_time_valid = verify_integrated_time(entry, certificate);
+    if (!integrated_time_valid)
+      {
+        return integrated_time_valid.error();
+      }
+
+    auto extensions_valid = verify_certificate_extensions(certificate, expected_identities);
+    if (!extensions_valid)
+      {
+        return extensions_valid.error();
+      }
+
+    auto key_usage_valid = certificate->verify_key_usage();
+    if (!key_usage_valid)
+      {
+        return key_usage_valid.error();
+      }
+    logger_->debug("Certificate key usage validation successful");
+    return outcome::success();
   }
 
   // =============================================================================
@@ -187,71 +179,69 @@ namespace sigstore
                                                                        const std::string &expected_root_hash,
                                                                        int64_t expected_tree_size)
   {
-    try
+    logger_->debug("Verifying checkpoint using CheckpointParser");
+
+    // Use CheckpointParser to parse the checkpoint from protobuf
+    CheckpointParser parser;
+    auto parsed_result = parser.parse_from_protobuf(checkpoint);
+    if (!parsed_result)
       {
-        logger_->debug("Verifying checkpoint using CheckpointParser");
-
-        // Use CheckpointParser to parse the checkpoint from protobuf
-        CheckpointParser parser;
-        auto parsed_result = parser.parse_from_protobuf(checkpoint);
-        if (!parsed_result)
-          {
-            logger_->error("Failed to parse checkpoint from protobuf: {}", parsed_result.error().message());
-            return parsed_result.error();
-          }
-        const auto &parsed_checkpoint = parsed_result.value();
-        auto expected_root_hash_b64 = Base64::encode(expected_root_hash);
-
-        // Verify basic checkpoint fields
-        if (parsed_checkpoint.origin.empty())
-          {
-            logger_->error("Checkpoint origin is empty");
-            return SigstoreError::InvalidTransparencyLog;
-          }
-        if (static_cast<int64_t>(parsed_checkpoint.tree_size) != expected_tree_size)
-          {
-            logger_->error("Checkpoint tree size {} does not match expected tree size {}", parsed_checkpoint.tree_size, expected_tree_size);
-            return SigstoreError::InvalidTransparencyLog;
-          }
-        if (parsed_checkpoint.root_hash != expected_root_hash_b64)
-          {
-            logger_->error("Checkpoint root hash {} does not match expected root hash {}", parsed_checkpoint.root_hash, expected_root_hash_b64);
-            return SigstoreError::InvalidTransparencyLog;
-          }
-
-        // Verify checkpoint signatures
-        if (parsed_checkpoint.signatures.empty())
-          {
-            logger_->error("No signatures found in checkpoint");
-            return SigstoreError::InvalidTransparencyLog;
-          }
-
-        // Verify signatures using the checkpoint body
-        for (const auto &sig: parsed_checkpoint.signatures)
-          {
-            if (sig.signer.starts_with("rekor.sigstore.dev"))
-              {
-                logger_->debug("Verifying checkpoint signature for signer: {}", sig.signer);
-                auto valid = verify_rekor_log_entry_signature(parsed_checkpoint.body, sig.signature);
-                if (!valid)
-                  {
-                    return valid.error();
-                  }
-              }
-            else
-              {
-                logger_->warn("Skipping checkpoint signature verification for unknown signer: {}", sig.signer);
-              }
-          }
-
-        logger_->debug("Checkpoint verification successful");
-        return outcome::success();
+        logger_->error("Failed to parse checkpoint from protobuf: {}", parsed_result.error().message());
+        return parsed_result.error();
       }
-    catch (const std::exception &e)
+    const auto &parsed_checkpoint = parsed_result.value();
+    auto expected_root_hash_b64_result = Base64::encode(expected_root_hash);
+    if (!expected_root_hash_b64_result.has_value())
       {
-        logger_->error("Error during checkpoint verification: {}", e.what());
+        logger_->error("Failed to encode expected root hash to Base64: {}", expected_root_hash_b64_result.error().message());
+        return expected_root_hash_b64_result.error();
+      }
+    const auto &expected_root_hash_b64 = expected_root_hash_b64_result.value();
+
+    // Verify basic checkpoint fields
+    if (parsed_checkpoint.origin.empty())
+      {
+        logger_->error("Checkpoint origin is empty");
         return SigstoreError::InvalidTransparencyLog;
       }
+    if (static_cast<int64_t>(parsed_checkpoint.tree_size) != expected_tree_size)
+      {
+        logger_->error("Checkpoint tree size {} does not match expected tree size {}", parsed_checkpoint.tree_size, expected_tree_size);
+        return SigstoreError::InvalidTransparencyLog;
+      }
+    if (parsed_checkpoint.root_hash != expected_root_hash_b64)
+      {
+        logger_->error("Checkpoint root hash {} does not match expected root hash {}", parsed_checkpoint.root_hash, expected_root_hash_b64);
+        return SigstoreError::InvalidTransparencyLog;
+      }
+
+    // Verify checkpoint signatures
+    if (parsed_checkpoint.signatures.empty())
+      {
+        logger_->error("No signatures found in checkpoint");
+        return SigstoreError::InvalidTransparencyLog;
+      }
+
+    // Verify signatures using the checkpoint body
+    for (const auto &sig: parsed_checkpoint.signatures)
+      {
+        if (sig.signer.starts_with("rekor.sigstore.dev"))
+          {
+            logger_->debug("Verifying checkpoint signature for signer: {}", sig.signer);
+            auto valid = verify_rekor_log_entry_signature(parsed_checkpoint.body, sig.signature);
+            if (!valid)
+              {
+                return valid.error();
+              }
+          }
+        else
+          {
+            logger_->warn("Skipping checkpoint signature verification for unknown signer: {}", sig.signer);
+          }
+      }
+
+    logger_->debug("Checkpoint verification successful");
+    return outcome::success();
   }
 
   outcome::std_result<void> TransparencyLogVerifier::verify_rekor_log_entry_signature(const std::string &log_entry, const std::string &signature_b64)
@@ -264,7 +254,13 @@ namespace sigstore
 
     try
       {
-        std::string signature_data = Base64::decode(signature_b64);
+        auto signature_data_result = Base64::decode(signature_b64);
+        if (!signature_data_result.has_value())
+          {
+            logger_->error("Failed to decode Base64 signature: {}", signature_data_result.error().message());
+            return signature_data_result.error();
+          }
+        std::string signature_data = signature_data_result.value();
 
         // Remove first 4 bytes (key hint)
         if (signature_data.size() > 4)
@@ -299,69 +295,60 @@ namespace sigstore
 
   outcome::std_result<void> TransparencyLogVerifier::verify_signed_entry_timestamp(const dev::sigstore::rekor::v1::TransparencyLogEntry &entry)
   {
-    try
+    logger_->debug("Verifying signed entry timestamp");
+    if (!entry.has_inclusion_promise())
       {
-        logger_->debug("Verifying signed entry timestamp");
-        if (!entry.has_inclusion_promise())
-          {
-            logger_->error("No inclusion promise to verify");
-            return SigstoreError::InvalidTransparencyLog;
-          }
-        const dev::sigstore::rekor::v1::InclusionPromise &promise = entry.inclusion_promise();
-
-        std::string signature_data = promise.signed_entry_timestamp();
-        if (signature_data.empty())
-          {
-            logger_->error("Failed to decode signed entry timestamp");
-            return SigstoreError::InvalidTransparencyLog;
-          }
-
-        if (entry.canonicalized_body().empty())
-          {
-            logger_->error("Cannot verify signed entry timestamp without body data");
-            return SigstoreError::InvalidTransparencyLog;
-          }
-
-        std::string log_id;
-        try
-          {
-            std::string key_id_binary = entry.log_id().key_id();
-
-            std::stringstream hex_stream;
-            hex_stream << std::hex << std::setfill('0');
-            for (unsigned char byte: key_id_binary)
-              {
-                hex_stream << std::setw(2) << static_cast<unsigned int>(byte);
-              }
-            log_id = hex_stream.str();
-          }
-        catch (const std::exception &e)
-          {
-            logger_->error("Failed to decode base64 keyId: {}", e.what());
-            return SigstoreError::InvalidTransparencyLog;
-          }
-
-        auto canonicalized_payload = fmt::format(R"({{"body":"{}","integratedTime":{},"logID":"{}","logIndex":{}}})",
-                                                 Base64::encode(entry.canonicalized_body()),
-                                                 entry.integrated_time(),
-                                                 log_id,
-                                                 entry.log_index());
-
-        spdlog::debug("Canonicalized payload for signed entry timestamp verification: {}", canonicalized_payload);
-        auto verify_result = rekor_public_key_->verify_signature(canonicalized_payload, signature_data);
-        if (!verify_result)
-          {
-            logger_->warn("Signed entry timestamp verification failed: {}", verify_result.error().message());
-            return SigstoreError::InvalidTransparencyLog;
-          }
-
-        return outcome::success();
-      }
-    catch (const std::exception &e)
-      {
-        logger_->error("Error during signed entry timestamp verification: {}", e.what());
+        logger_->error("No inclusion promise to verify");
         return SigstoreError::InvalidTransparencyLog;
       }
+    const dev::sigstore::rekor::v1::InclusionPromise &promise = entry.inclusion_promise();
+
+    std::string signature_data = promise.signed_entry_timestamp();
+    if (signature_data.empty())
+      {
+        logger_->error("Failed to decode signed entry timestamp");
+        return SigstoreError::InvalidTransparencyLog;
+      }
+
+    if (entry.canonicalized_body().empty())
+      {
+        logger_->error("Cannot verify signed entry timestamp without body data");
+        return SigstoreError::InvalidTransparencyLog;
+      }
+
+    std::string log_id;
+    std::string key_id_binary = entry.log_id().key_id();
+
+    std::stringstream hex_stream;
+    hex_stream << std::hex << std::setfill('0');
+    for (unsigned char byte: key_id_binary)
+      {
+        hex_stream << std::setw(2) << static_cast<unsigned int>(byte);
+      }
+    log_id = hex_stream.str();
+
+    auto canonicalized_body_b64_result = Base64::encode(entry.canonicalized_body());
+    if (!canonicalized_body_b64_result.has_value())
+      {
+        logger_->error("Failed to encode canonicalized body to Base64: {}", canonicalized_body_b64_result.error().message());
+        return canonicalized_body_b64_result.error();
+      }
+
+    auto canonicalized_payload = fmt::format(R"({{"body":"{}","integratedTime":{},"logID":"{}","logIndex":{}}})",
+                                             canonicalized_body_b64_result.value(),
+                                             entry.integrated_time(),
+                                             log_id,
+                                             entry.log_index());
+
+    spdlog::debug("Canonicalized payload for signed entry timestamp verification: {}", canonicalized_payload);
+    auto verify_result = rekor_public_key_->verify_signature(canonicalized_payload, signature_data);
+    if (!verify_result)
+      {
+        logger_->warn("Signed entry timestamp verification failed: {}", verify_result.error().message());
+        return SigstoreError::InvalidTransparencyLog;
+      }
+
+    return outcome::success();
   }
 
   // =============================================================================
@@ -371,43 +358,34 @@ namespace sigstore
   outcome::std_result<void> TransparencyLogVerifier::verify_integrated_time(const dev::sigstore::rekor::v1::TransparencyLogEntry &entry,
                                                                             std::shared_ptr<Certificate> certificate)
   {
-    try
+    int64_t integrated_time_seconds = entry.integrated_time();
+    auto integrated_time = std::chrono::system_clock::from_time_t(static_cast<std::time_t>(integrated_time_seconds));
+    logger_->debug("Verifying integrated time: {}", integrated_time);
+
+    auto cert_valid_at_time_result = certificate->is_valid_at_time(integrated_time);
+    if (!cert_valid_at_time_result)
       {
-
-        int64_t integrated_time_seconds = entry.integrated_time();
-        auto integrated_time = std::chrono::system_clock::from_time_t(static_cast<std::time_t>(integrated_time_seconds));
-        logger_->debug("Verifying integrated time: {}", integrated_time);
-
-        auto cert_valid_at_time_result = certificate->is_valid_at_time(integrated_time);
-        if (!cert_valid_at_time_result)
-          {
-            return cert_valid_at_time_result.error();
-          }
-        if (!cert_valid_at_time_result.value())
-          {
-            logger_->error("Certificate validity check failed at integrated time: {}", integrated_time_seconds);
-            return SigstoreError::InvalidTransparencyLog;
-          }
-
-        auto current_time = std::chrono::system_clock::now();
-        constexpr auto MAX_CLOCK_SKEW = std::chrono::seconds(300); // 5 minutes
-
-        if (integrated_time > current_time + MAX_CLOCK_SKEW)
-          {
-            logger_->warn("Integrated time {} is too far in the future (current: {})",
-                          integrated_time_seconds,
-                          std::chrono::system_clock::to_time_t(current_time));
-            return SigstoreError::InvalidCertificate;
-          }
-
-        logger_->debug("Integrated time validation successful: certificate was valid at {}", integrated_time_seconds);
-        return outcome::success();
+        return cert_valid_at_time_result.error();
       }
-    catch (const std::exception &e)
+    if (!cert_valid_at_time_result.value())
       {
-        logger_->error("Error during integrated time verification: {}", e.what());
+        logger_->error("Certificate validity check failed at integrated time: {}", integrated_time_seconds);
         return SigstoreError::InvalidTransparencyLog;
       }
+
+    auto current_time = std::chrono::system_clock::now();
+    constexpr auto MAX_CLOCK_SKEW = std::chrono::seconds(300); // 5 minutes
+
+    if (integrated_time > current_time + MAX_CLOCK_SKEW)
+      {
+        logger_->warn("Integrated time {} is too far in the future (current: {})",
+                      integrated_time_seconds,
+                      std::chrono::system_clock::to_time_t(current_time));
+        return SigstoreError::InvalidCertificate;
+      }
+
+    logger_->debug("Integrated time validation successful: certificate was valid at {}", integrated_time_seconds);
+    return outcome::success();
   }
 
   // =============================================================================
@@ -415,8 +393,7 @@ namespace sigstore
   // =============================================================================
 
   outcome::std_result<void> TransparencyLogVerifier::verify_certificate_extensions(const std::shared_ptr<Certificate> &certificate,
-                                                                                   const std::string &expected_email,
-                                                                                   const std::string &expected_issuer)
+                                                                                   const std::vector<std::pair<std::string, std::string>> &expected_identities)
   {
     try
       {
@@ -431,13 +408,6 @@ namespace sigstore
           }
         logger_->debug("Found subject email: {}", subject_email);
 
-        // If an expected email is provided, validate it
-        if (!expected_email.empty() && subject_email != expected_email)
-          {
-            logger_->error("Subject email mismatch: expected '{}', found '{}'", expected_email, subject_email);
-            return SigstoreError::InvalidCertificate;
-          }
-
         // Verify OIDC issuer extension
         std::string oidc_issuer = certificate->oidc_issuer();
         if (oidc_issuer.empty())
@@ -447,11 +417,25 @@ namespace sigstore
           }
         logger_->debug("Found OIDC issuer: {}", oidc_issuer);
 
-        // If an expected issuer is provided, validate it
-        if (!expected_issuer.empty() && oidc_issuer != expected_issuer)
+        // If expected identities are provided, validate against them
+        if (!expected_identities.empty())
           {
-            logger_->error("OIDC issuer mismatch: expected '{}', found '{}'", expected_issuer, oidc_issuer);
-            return SigstoreError::InvalidCertificate;
+            bool identity_match_found = false;
+            for (const auto &[expected_email, expected_issuer] : expected_identities)
+              {
+                if (subject_email == expected_email && oidc_issuer == expected_issuer)
+                  {
+                    identity_match_found = true;
+                    logger_->debug("Certificate identity matches expected: email='{}', issuer='{}'", expected_email, expected_issuer);
+                    break;
+                  }
+              }
+
+            if (!identity_match_found)
+              {
+                logger_->error("Certificate identity does not match any expected identities: email='{}', issuer='{}'", subject_email, oidc_issuer);
+                return SigstoreError::InvalidCertificate;
+              }
           }
 
         // Validate that the OIDC issuer is from a trusted source (e.g., GitHub, GitLab, etc.)
@@ -472,92 +456,6 @@ namespace sigstore
     catch (const std::exception &e)
       {
         logger_->error("Error during certificate extensions verification: {}", e.what());
-        return SigstoreError::InvalidCertificate;
-      }
-  }
-
-  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_key_usage(const std::shared_ptr<Certificate> certificate)
-  {
-    try
-      {
-        logger_->debug("Verifying certificate key usage");
-
-        X509 *cert = certificate->get();
-        if (cert == nullptr)
-          {
-            logger_->error("Invalid certificate for key usage verification");
-            return SigstoreError::InvalidCertificate;
-          }
-
-        // Check Extended Key Usage extension
-        STACK_OF(ASN1_OBJECT) *eku = static_cast<STACK_OF(ASN1_OBJECT) *>(X509_get_ext_d2i(cert, NID_ext_key_usage, nullptr, nullptr));
-
-        if (eku == nullptr)
-          {
-            logger_->error("Certificate does not contain Extended Key Usage extension");
-            return SigstoreError::InvalidCertificate;
-          }
-
-        bool code_signing_found = false;
-        int eku_count = sk_ASN1_OBJECT_num(eku);
-
-        for (int i = 0; i < eku_count; i++)
-          {
-            ASN1_OBJECT *usage = sk_ASN1_OBJECT_value(eku, i);
-            if (usage != nullptr)
-              {
-                constexpr size_t OID_BUFFER_SIZE = 256;
-                std::array<char, OID_BUFFER_SIZE> oid_str{};
-                OBJ_obj2txt(oid_str.data(), OID_BUFFER_SIZE, usage, 1);
-
-                logger_->debug("Found EKU: {}", oid_str.data());
-
-                // Check for Code Signing (1.3.6.1.5.5.7.3.3)
-                if (std::string(oid_str.data()) == "1.3.6.1.5.5.7.3.3")
-                  {
-                    code_signing_found = true;
-                    break;
-                  }
-              }
-          }
-        sk_ASN1_OBJECT_pop_free(eku, ASN1_OBJECT_free);
-
-        if (!code_signing_found)
-          {
-            logger_->error("Certificate does not have Code Signing extended key usage");
-            return SigstoreError::InvalidCertificate;
-          }
-
-        // Check Key Usage extension for digital signature
-        auto *key_usage = static_cast<ASN1_BIT_STRING *>(X509_get_ext_d2i(cert, NID_key_usage, nullptr, nullptr));
-
-        if (key_usage != nullptr)
-          {
-            int usage_bits = ASN1_BIT_STRING_get_bit(key_usage, 0); // Digital Signature bit
-            ASN1_BIT_STRING_free(key_usage);
-
-            if (usage_bits != 1)
-              {
-                logger_->warn("Certificate Key Usage does not include Digital Signature");
-                // This might be acceptable in some cases, so we'll warn but not fail
-                // return false;
-              }
-            else
-              {
-                logger_->debug("Certificate has Digital Signature key usage");
-              }
-          }
-        else
-          {
-            logger_->debug("Certificate does not have Key Usage extension (might be acceptable)");
-          }
-
-        logger_->debug("Certificate key usage validation successful");
-        return outcome::success();
-      }
-    catch (const std::exception &e)
-      {
-        logger_->error("Error during certificate key usage verification: {}", e.what());
         return SigstoreError::InvalidCertificate;
       }
   }
@@ -697,8 +595,27 @@ namespace sigstore
     if (bundle_helper.get_message_digest().has_value() && bundle_helper.get_message_digest().value() != tlog_hash_binary)
       {
         logger_->error("Hash mismatch between bundle and transparency log");
-        logger_->debug("Bundle hash: {}", Base64::encode(bundle_helper.get_message_digest().value()));
-        logger_->debug("TLog hash:   {}", Base64::encode(tlog_hash_binary));
+        
+        auto bundle_hash_b64_result = Base64::encode(bundle_helper.get_message_digest().value());
+        auto tlog_hash_b64_result = Base64::encode(tlog_hash_binary);
+        
+        if (bundle_hash_b64_result.has_value())
+          {
+            logger_->debug("Bundle hash: {}", bundle_hash_b64_result.value());
+          }
+        else
+          {
+            logger_->debug("Bundle hash: <failed to encode>");
+          }
+          
+        if (tlog_hash_b64_result.has_value())
+          {
+            logger_->debug("TLog hash:   {}", tlog_hash_b64_result.value());
+          }
+        else
+          {
+            logger_->debug("TLog hash:   <failed to encode>");
+          }
         return SigstoreError::InvalidTransparencyLog;
       }
 

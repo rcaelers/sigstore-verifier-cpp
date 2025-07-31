@@ -77,6 +77,8 @@ namespace sigstore
                                                const std::string &signature,
                                                DigestAlgorithm digest_algorithm = DigestAlgorithm::SHA256) const;
 
+    outcome::std_result<void> verify_key_usage() const;
+
     bool operator==(const Certificate &other) const;
     bool operator!=(const Certificate &other) const;
 

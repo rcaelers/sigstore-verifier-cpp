@@ -26,6 +26,8 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <optional>
+#include <tuple>
 #include <boost/outcome/std_result.hpp>
 
 namespace outcome = boost::outcome_v2;
@@ -57,7 +59,13 @@ namespace sigstore
     SigstoreVerifier(SigstoreVerifier &&) noexcept;
     SigstoreVerifier &operator=(SigstoreVerifier &&) noexcept;
 
-    outcome::std_result<bool> verify(std::string_view data, std::string_view bundle_json);
+    outcome::std_result<void> verify(std::string_view data, std::string_view bundle_json);
+    outcome::std_result<void> load_embedded_fulcio_ca_certificates();
+    outcome::std_result<void> add_ca_certificate(const std::string &ca_certificate);
+
+    void add_expected_identity(const std::string &email, const std::string &issuer);
+    void remove_expected_identity(const std::string &email, const std::string &issuer);
+    void clear_expected_certificate_identities();
 
   private:
     class Impl;

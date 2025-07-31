@@ -28,6 +28,7 @@
 #include <string>
 
 #include "CanonicalBodyParser.hh"
+#include "TestUtils.hh"
 #include "sigstore/SigstoreErrors.hh"
 
 using namespace sigstore;
@@ -42,7 +43,7 @@ protected:
 
   std::string load_body_json()
   {
-    std::string file_path = "body.json";
+    std::string file_path = find_test_data_file("body.json");
     std::ifstream body_file(file_path);
     if (!body_file.is_open())
       {

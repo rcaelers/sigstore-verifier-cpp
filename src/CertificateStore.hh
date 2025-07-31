@@ -49,6 +49,7 @@ namespace sigstore
     CertificateStore &operator=(CertificateStore &&) noexcept = default;
 
     outcome::std_result<void> load_trust_bundle(const std::string &trust_bundle_json);
+    outcome::std_result<void> add_ca_certificates(const std::string &ca_certificate);
     outcome::std_result<void> verify_certificate_chain(std::shared_ptr<Certificate> cert);
 
     size_t get_root_certificate_count() const;

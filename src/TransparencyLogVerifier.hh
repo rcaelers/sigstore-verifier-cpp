@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <chrono>
+#include <optional>
 #include <openssl/evp.h>
 #include <boost/json.hpp>
 #include <boost/outcome/std_result.hpp>
@@ -81,7 +82,9 @@ namespace sigstore
     TransparencyLogVerifier(TransparencyLogVerifier &&) noexcept = default;
     TransparencyLogVerifier &operator=(TransparencyLogVerifier &&) noexcept = default;
 
-    outcome::std_result<void> verify_transparency_log(dev::sigstore::rekor::v1::TransparencyLogEntry entry, std::shared_ptr<Certificate> certificate);
+    outcome::std_result<void> verify_transparency_log(dev::sigstore::rekor::v1::TransparencyLogEntry entry,
+                                                      std::shared_ptr<Certificate> certificate,
+                                                      const std::vector<std::pair<std::string, std::string>> &expected_identities = {});
     outcome::std_result<void> verify_bundle_consistency(const dev::sigstore::rekor::v1::TransparencyLogEntry &entry,
                                                         const dev::sigstore::bundle::v1::Bundle &bundle);
 
@@ -91,11 +94,10 @@ namespace sigstore
                                                 const std::string &expected_root_hash,
                                                 int64_t expected_tree_size);
     outcome::std_result<void> verify_signed_entry_timestamp(const dev::sigstore::rekor::v1::TransparencyLogEntry &entry);
-    outcome::std_result<void> verify_integrated_time(const dev::sigstore::rekor::v1::TransparencyLogEntry &entry, std::shared_ptr<Certificate> certificate);
+    outcome::std_result<void> verify_integrated_time(const dev::sigstore::rekor::v1::TransparencyLogEntry &entry,
+                                                     std::shared_ptr<Certificate> certificate);
     outcome::std_result<void> verify_certificate_extensions(const std::shared_ptr<Certificate> &certificate,
-                                                            const std::string &expected_email = "",
-                                                            const std::string &expected_issuer = "");
-    outcome::std_result<void> verify_certificate_key_usage(std::shared_ptr<Certificate> certificate);
+                                                            const std::vector<std::pair<std::string, std::string>> &expected_identities = {});
     outcome::std_result<void> verify_rekor_log_entry_signature(const std::string &log_entry, const std::string &signature_b64);
 
     outcome::std_result<void> verify_signature_consistency(const HashedRekord &rekord, const BundleHelper &bundle_helper);

@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Rob Caelers <rob.caelers@gmail.com>
+// Copyright (C) 2025 Rob Caelers <rob.caelers@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,26 +18,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef UTILS_BASE64_HH
-#define UTILS_BASE64_HH
+#pragma once
 
 #include <string>
-#include <boost/outcome/std_result.hpp>
-#include "sigstore/SigstoreErrors.hh"
+#include <filesystem>
+#include <boost/dll/runtime_symbol_info.hpp>
 
-namespace outcome = boost::outcome_v2;
-
-namespace sigstore
+// Helper function to locate test data files relative to executable location
+inline std::string
+find_test_data_file(const std::string &filename)
 {
+  auto boost_exe_path = boost::dll::program_location();
+  std::filesystem::path exe_dir = std::filesystem::path(boost_exe_path.string()).parent_path();
+  std::filesystem::path test_data_path = exe_dir / filename;
 
-  class Base64
-  {
-  public:
-    static bool is_valid_base64(const std::string &input);
-    static outcome::std_result<std::string> decode(const std::string &val);
-    static outcome::std_result<std::string> encode(const std::string &val);
-  };
-
-} // namespace sigstore
-
-#endif // UTILS_BASE64_HH
+  return test_data_path.string();
+}

@@ -67,9 +67,6 @@ namespace sigstore
     // bool is_valid() const;
 
   private:
-    const dev::sigstore::bundle::v1::Bundle &bundle_;
-    std::shared_ptr<Certificate> certificate_;
-
     std::shared_ptr<Certificate> extract_certificate() const;
     std::string extract_signature() const;
     std::optional<std::string> extract_message_digest() const;
@@ -78,6 +75,8 @@ namespace sigstore
 
   private:
     std::shared_ptr<spdlog::logger> logger_{Logging::create("sigstore:bundle_loader")};
+    const dev::sigstore::bundle::v1::Bundle &bundle_;
+    std::shared_ptr<Certificate> certificate_;
   };
 
 } // namespace sigstore

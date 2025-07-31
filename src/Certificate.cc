@@ -22,11 +22,13 @@
 
 #include <chrono>
 #include <ctime>
+#include <array>
 #include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
 #include <openssl/evp.h>
 #include <openssl/asn1.h>
+#include <openssl/objects.h>
 #include <fmt/chrono.h>
 
 #include "sigstore/SigstoreErrors.hh"
@@ -376,6 +378,92 @@ namespace sigstore
       }
 
     return public_key->verify_signature(data, signature, digest_algorithm);
+  }
+
+  outcome::std_result<void> Certificate::verify_key_usage() const
+  {
+    try
+      {
+        logger_->debug("Verifying certificate key usage");
+
+        X509 *cert = get();
+        if (cert == nullptr)
+          {
+            logger_->error("Invalid certificate for key usage verification");
+            return SigstoreError::InvalidCertificate;
+          }
+
+        // Check Extended Key Usage extension
+        STACK_OF(ASN1_OBJECT) *eku = static_cast<STACK_OF(ASN1_OBJECT) *>(X509_get_ext_d2i(cert, NID_ext_key_usage, nullptr, nullptr));
+
+        if (eku == nullptr)
+          {
+            logger_->error("Certificate does not contain Extended Key Usage extension");
+            return SigstoreError::InvalidCertificate;
+          }
+
+        bool code_signing_found = false;
+        int eku_count = sk_ASN1_OBJECT_num(eku);
+
+        for (int i = 0; i < eku_count; i++)
+          {
+            ASN1_OBJECT *usage = sk_ASN1_OBJECT_value(eku, i);
+            if (usage != nullptr)
+              {
+                constexpr size_t OID_BUFFER_SIZE = 256;
+                std::array<char, OID_BUFFER_SIZE> oid_str{};
+                OBJ_obj2txt(oid_str.data(), OID_BUFFER_SIZE, usage, 1);
+
+                logger_->debug("Found EKU: {}", oid_str.data());
+
+                // Check for Code Signing (1.3.6.1.5.5.7.3.3)
+                if (std::string(oid_str.data()) == "1.3.6.1.5.5.7.3.3")
+                  {
+                    code_signing_found = true;
+                    break;
+                  }
+              }
+          }
+        sk_ASN1_OBJECT_pop_free(eku, ASN1_OBJECT_free);
+
+        if (!code_signing_found)
+          {
+            logger_->error("Certificate does not have Code Signing extended key usage");
+            return SigstoreError::InvalidCertificate;
+          }
+
+        // Check Key Usage extension for digital signature
+        auto *key_usage = static_cast<ASN1_BIT_STRING *>(X509_get_ext_d2i(cert, NID_key_usage, nullptr, nullptr));
+
+        if (key_usage != nullptr)
+          {
+            int usage_bits = ASN1_BIT_STRING_get_bit(key_usage, 0); // Digital Signature bit
+            ASN1_BIT_STRING_free(key_usage);
+
+            if (usage_bits != 1)
+              {
+                logger_->warn("Certificate Key Usage does not include Digital Signature");
+                // This might be acceptable in some cases, so we'll warn but not fail
+                // return false;
+              }
+            else
+              {
+                logger_->debug("Certificate has Digital Signature key usage");
+              }
+          }
+        else
+          {
+            logger_->debug("Certificate does not have Key Usage extension (might be acceptable)");
+          }
+
+        logger_->debug("Certificate key usage validation successful");
+        return outcome::success();
+      }
+    catch (const std::exception &e)
+      {
+        logger_->error("Error during certificate key usage verification: {}", e.what());
+        return SigstoreError::InvalidCertificate;
+      }
   }
 
   bool Certificate::operator==(const Certificate &other) const

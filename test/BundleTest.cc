@@ -28,6 +28,8 @@
 #include <tuple>
 #include <vector>
 #include <chrono>
+
+#include "TestUtils.hh"
 #include <fstream>
 #include <string>
 
@@ -76,7 +78,7 @@ protected:
 
     try
       {
-        std::string cert_der_str = Base64::decode(cert_base64);
+        std::string cert_der_str = Base64::decode(cert_base64).value();
         std::vector<uint8_t> cert_der(cert_der_str.begin(), cert_der_str.end());
 
         return Certificate::from_der(cert_der);
@@ -92,7 +94,7 @@ protected:
   outcome::std_result<std::tuple<dev::sigstore::rekor::v1::TransparencyLogEntry, dev::sigstore::bundle::v1::Bundle, std::shared_ptr<Certificate>>>
   load_standard_bundle(std::function<void(boost::json::value &json_val)> patch = [](boost::json::value &json_val) {})
   {
-    std::string file_path = "appcast-sigstore.xml.sigstore.new.bundle";
+    std::string file_path = find_test_data_file("appcast-sigstore.xml.sigstore.bundle");
     if (file_path.empty())
       {
         ADD_FAILURE() << "Failed to open bundle empty file";

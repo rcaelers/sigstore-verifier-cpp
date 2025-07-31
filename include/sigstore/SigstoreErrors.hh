@@ -33,7 +33,8 @@ namespace sigstore
     InvalidPublicKey,
     InvalidTransparencyLog,
     JsonParseError,
-    SystemError
+    SystemError,
+    InvalidBase64,
   };
 
   class SigstoreErrorCategory : public std::error_category
@@ -62,6 +63,8 @@ namespace sigstore
           return "JSON parse error";
         case SigstoreError::SystemError:
           return "System error";
+        case SigstoreError::InvalidBase64:
+          return "Invalid Base64";
         default:
           return "Unknown error";
         }
