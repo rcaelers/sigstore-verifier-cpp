@@ -9,6 +9,7 @@ add_executable(test-sigstore
   PublicKeyTest.cc
   RFC6962HasherTest.cc
   SigstoreTest.cc
+  OnlineTransparencyLogLoaderTest.cc
   TransparencyLogLoaderTest.cc
 )
 

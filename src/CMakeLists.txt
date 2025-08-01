@@ -78,6 +78,7 @@ target_sources(sigstore PRIVATE
   RFC6962Hasher.cc
   SigstoreErrors.cc
   SigstoreVerifier.cc
+  OnlineTransparencyLogLoader.cc
   TransparencyLogLoader.cc
   TransparencyLogVerifier.cc
   ${SIGSTORE_PROTO_SRCS}
