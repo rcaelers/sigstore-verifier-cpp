@@ -23,7 +23,6 @@
 
 #include <string>
 #include <boost/outcome/std_result.hpp>
-#include "sigstore/SigstoreErrors.hh"
 
 namespace outcome = boost::outcome_v2;
 

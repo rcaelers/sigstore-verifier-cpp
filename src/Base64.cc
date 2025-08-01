@@ -29,6 +29,8 @@
 #include <boost/archive/iterators/transform_width.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include "sigstore/SigstoreErrors.hh"
+
 namespace sigstore
 {
 
@@ -142,3 +144,4 @@ namespace sigstore
   }
 
 } // namespace sigstore
+

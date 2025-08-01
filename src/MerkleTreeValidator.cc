@@ -26,7 +26,6 @@
 #include <bit>
 
 #include "sigstore/SigstoreErrors.hh"
-#include "Base64.hh"
 
 namespace sigstore
 {
