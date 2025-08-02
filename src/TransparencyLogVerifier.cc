@@ -64,7 +64,7 @@ namespace sigstore
     if (!public_key)
       {
         logger_->error("Failed to parse embedded Rekor public key");
-        return outcome::failure(make_error_code(SigstoreError::InvalidCertificate));
+        return SigstoreError::InvalidCertificate;
       }
 
     rekor_public_key_ = public_key;
@@ -595,10 +595,10 @@ namespace sigstore
     if (bundle_helper.get_message_digest().has_value() && bundle_helper.get_message_digest().value() != tlog_hash_binary)
       {
         logger_->error("Hash mismatch between bundle and transparency log");
-        
+
         auto bundle_hash_b64_result = Base64::encode(bundle_helper.get_message_digest().value());
         auto tlog_hash_b64_result = Base64::encode(tlog_hash_binary);
-        
+
         if (bundle_hash_b64_result.has_value())
           {
             logger_->debug("Bundle hash: {}", bundle_hash_b64_result.value());
@@ -607,7 +607,7 @@ namespace sigstore
           {
             logger_->debug("Bundle hash: <failed to encode>");
           }
-          
+
         if (tlog_hash_b64_result.has_value())
           {
             logger_->debug("TLog hash:   {}", tlog_hash_b64_result.value());

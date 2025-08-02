@@ -92,13 +92,13 @@ namespace sigstore
         // Validate the final input (characters, padding, and length)
         if (!Base64::is_valid_base64(input))
           {
-            return outcome::failure(make_error_code(SigstoreError::InvalidBase64));
+            return SigstoreError::InvalidBase64;
           }
 
         // Ensure final length is multiple of 4 (should always be true after padding)
         if (input.length() % 4 != 0)
           {
-            return outcome::failure(make_error_code(SigstoreError::InvalidBase64));
+            return SigstoreError::InvalidBase64;
           }
 
         constexpr int output_bits = 8;
@@ -115,7 +115,7 @@ namespace sigstore
       }
     catch (const std::exception &e)
       {
-        return outcome::failure(make_error_code(SigstoreError::InvalidBase64));
+        return SigstoreError::InvalidBase64;
       }
   }
 
@@ -139,7 +139,7 @@ namespace sigstore
       }
     catch (const std::exception &e)
       {
-        return outcome::failure(make_error_code(SigstoreError::InvalidBase64));
+        return SigstoreError::InvalidBase64;
       }
   }
 
