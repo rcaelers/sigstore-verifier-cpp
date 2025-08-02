@@ -55,9 +55,13 @@ namespace sigstore
     outcome::std_result<TransparencyLogEntryMap> load_from_json(const std::string &json_content);
 
   private:
-    outcome::std_result<TransparencyLogEntryPtr> convert_tlog_entry_to_protobuf(const std::string &tlog_entry_json);
+    outcome::std_result<TransparencyLogEntryPtr> convert_tlog_entry_to_protobuf(const boost::json::object &tlog_obj);
 
     outcome::std_result<void> parse_basic_fields(const boost::json::object &tlog_obj, TransparencyLogEntryPtr entry);
+    outcome::std_result<void> parse_log_index_field(const boost::json::object &tlog_obj, TransparencyLogEntryPtr entry);
+    outcome::std_result<void> parse_integrated_time_field(const boost::json::object &tlog_obj, TransparencyLogEntryPtr entry);
+    outcome::std_result<void> parse_log_id_field(const boost::json::object &tlog_obj, TransparencyLogEntryPtr entry);
+    outcome::std_result<void> parse_body_field(const boost::json::object &tlog_obj, TransparencyLogEntryPtr entry);
     outcome::std_result<void> parse_kind_version(const boost::json::object &tlog_obj, TransparencyLogEntryPtr entry);
     outcome::std_result<void> parse_verification(const boost::json::object &tlog_obj, TransparencyLogEntryPtr entry);
     outcome::std_result<void> parse_inclusion_proof(const boost::json::object &proof_obj, dev::sigstore::rekor::v1::InclusionProof *inclusion_proof);

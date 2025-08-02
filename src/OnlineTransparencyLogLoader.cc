@@ -96,13 +96,11 @@ namespace sigstore
       {
         if (!value.is_object())
           {
-            logger_->warn("Skipping non-object entry with key: {}", key);
-            continue;
+            logger_->error("Entry with key '{}' must be an object, got: {}", key, boost::json::serialize(value));
+            return SigstoreError::InvalidTransparencyLog;
           }
 
-        std::string entry_json = boost::json::serialize(value);
-
-        auto converted_entry = convert_tlog_entry_to_protobuf(entry_json);
+        auto converted_entry = convert_tlog_entry_to_protobuf(value.as_object());
         if (!converted_entry)
           {
             logger_->error("Failed to convert TLog entry with key '{}': {}", key, converted_entry.error().message());
@@ -117,24 +115,8 @@ namespace sigstore
   }
 
   outcome::std_result<OnlineTransparencyLogLoader::TransparencyLogEntryPtr> OnlineTransparencyLogLoader::convert_tlog_entry_to_protobuf(
-    const std::string &tlog_entry_json)
+    const boost::json::object &tlog_obj)
   {
-    boost::system::error_code ec;
-    boost::json::value tlog_entry = boost::json::parse(tlog_entry_json, ec);
-    if (ec)
-      {
-        logger_->error("Failed to parse TLog entry JSON: {}", ec.message());
-        return SigstoreError::InvalidTransparencyLog;
-      }
-
-    if (!tlog_entry.is_object())
-      {
-        logger_->error("TLog entry is not an object");
-        return SigstoreError::InvalidTransparencyLog;
-      }
-
-    auto tlog_obj = tlog_entry.as_object();
-
     auto entry = std::make_shared<dev::sigstore::rekor::v1::TransparencyLogEntry>();
 
     auto result = parse_basic_fields(tlog_obj, entry);
@@ -158,8 +140,8 @@ namespace sigstore
     return std::move(entry);
   }
 
-  outcome::std_result<void> OnlineTransparencyLogLoader::parse_basic_fields(const boost::json::object &tlog_obj,
-                                                                            OnlineTransparencyLogLoader::TransparencyLogEntryPtr entry)
+  outcome::std_result<void> OnlineTransparencyLogLoader::parse_log_index_field(const boost::json::object &tlog_obj,
+                                                                               OnlineTransparencyLogLoader::TransparencyLogEntryPtr entry)
   {
     if (const auto *it = tlog_obj.find("logIndex"); it != tlog_obj.end())
       {
@@ -177,8 +159,18 @@ namespace sigstore
               }
             entry->set_log_index(parse_result.value());
           }
+        else
+          {
+            logger_->error("logIndex must be an integer or string, got: {}", boost::json::serialize(it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
       }
+    return outcome::success();
+  }
 
+  outcome::std_result<void> OnlineTransparencyLogLoader::parse_integrated_time_field(const boost::json::object &tlog_obj,
+                                                                                     OnlineTransparencyLogLoader::TransparencyLogEntryPtr entry)
+  {
     if (const auto *it = tlog_obj.find("integratedTime"); it != tlog_obj.end())
       {
         if (it->value().is_int64())
@@ -195,24 +187,84 @@ namespace sigstore
               }
             entry->set_integrated_time(parse_result.value());
           }
-      }
-
-    if (const auto *it = tlog_obj.find("logID"); it != tlog_obj.end() && it->value().is_string())
-      {
-        auto log_id = std::string(it->value().as_string());
-        entry->mutable_log_id()->set_key_id(log_id);
-      }
-
-    if (const auto *it = tlog_obj.find("body"); it != tlog_obj.end() && it->value().is_string())
-      {
-        auto body_b64 = std::string(it->value().as_string());
-        auto body_decoded = Base64::decode(body_b64);
-        if (!body_decoded.has_value())
+        else
           {
-            logger_->error("Failed to decode base64 body: {}", body_decoded.error().message());
-            return body_decoded.error();
+            logger_->error("integratedTime must be an integer or string, got: {}", boost::json::serialize(it->value()));
+            return SigstoreError::InvalidTransparencyLog;
           }
-        entry->set_canonicalized_body(body_decoded.value());
+      }
+    return outcome::success();
+  }
+
+  outcome::std_result<void> OnlineTransparencyLogLoader::parse_log_id_field(const boost::json::object &tlog_obj,
+                                                                            OnlineTransparencyLogLoader::TransparencyLogEntryPtr entry)
+  {
+    if (const auto *it = tlog_obj.find("logID"); it != tlog_obj.end())
+      {
+        if (it->value().is_string())
+          {
+            auto log_id = std::string(it->value().as_string());
+            entry->mutable_log_id()->set_key_id(log_id);
+          }
+        else
+          {
+            logger_->error("logID must be a string, got: {}", boost::json::serialize(it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
+      }
+    return outcome::success();
+  }
+
+  outcome::std_result<void> OnlineTransparencyLogLoader::parse_body_field(const boost::json::object &tlog_obj,
+                                                                          OnlineTransparencyLogLoader::TransparencyLogEntryPtr entry)
+  {
+    if (const auto *it = tlog_obj.find("body"); it != tlog_obj.end())
+      {
+        if (it->value().is_string())
+          {
+            auto body_b64 = std::string(it->value().as_string());
+            auto body_decoded = Base64::decode(body_b64);
+            if (!body_decoded.has_value())
+              {
+                logger_->error("Failed to decode base64 body: {}", body_decoded.error().message());
+                return body_decoded.error();
+              }
+            entry->set_canonicalized_body(body_decoded.value());
+          }
+        else
+          {
+            logger_->error("body must be a string, got: {}", boost::json::serialize(it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
+      }
+    return outcome::success();
+  }
+
+  outcome::std_result<void> OnlineTransparencyLogLoader::parse_basic_fields(const boost::json::object &tlog_obj,
+                                                                            OnlineTransparencyLogLoader::TransparencyLogEntryPtr entry)
+  {
+    auto result = parse_log_index_field(tlog_obj, entry);
+    if (!result)
+      {
+        return result.error();
+      }
+
+    result = parse_integrated_time_field(tlog_obj, entry);
+    if (!result)
+      {
+        return result.error();
+      }
+
+    result = parse_log_id_field(tlog_obj, entry);
+    if (!result)
+      {
+        return result.error();
+      }
+
+    result = parse_body_field(tlog_obj, entry);
+    if (!result)
+      {
+        return result.error();
       }
 
     return outcome::success();
@@ -221,19 +273,41 @@ namespace sigstore
   outcome::std_result<void> OnlineTransparencyLogLoader::parse_kind_version(const boost::json::object &tlog_obj,
                                                                             OnlineTransparencyLogLoader::TransparencyLogEntryPtr entry)
   {
-    if (const auto *it = tlog_obj.find("kindVersion"); it != tlog_obj.end() && it->value().is_object())
+    if (const auto *it = tlog_obj.find("kindVersion"); it != tlog_obj.end())
       {
+        if (!it->value().is_object())
+          {
+            logger_->error("kindVersion must be an object, got: {}", boost::json::serialize(it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
+
         auto kind_version_obj = it->value().as_object();
         auto *kind_version = entry->mutable_kind_version();
 
-        if (const auto *kind_it = kind_version_obj.find("kind"); kind_it != kind_version_obj.end() && kind_it->value().is_string())
+        if (const auto *kind_it = kind_version_obj.find("kind"); kind_it != kind_version_obj.end())
           {
-            kind_version->set_kind(std::string(kind_it->value().as_string()));
+            if (kind_it->value().is_string())
+              {
+                kind_version->set_kind(std::string(kind_it->value().as_string()));
+              }
+            else
+              {
+                logger_->error("kindVersion.kind must be a string, got: {}", boost::json::serialize(kind_it->value()));
+                return SigstoreError::InvalidTransparencyLog;
+              }
           }
 
-        if (const auto *version_it = kind_version_obj.find("version"); version_it != kind_version_obj.end() && version_it->value().is_string())
+        if (const auto *version_it = kind_version_obj.find("version"); version_it != kind_version_obj.end())
           {
-            kind_version->set_version(std::string(version_it->value().as_string()));
+            if (version_it->value().is_string())
+              {
+                kind_version->set_version(std::string(version_it->value().as_string()));
+              }
+            else
+              {
+                logger_->error("kindVersion.version must be a string, got: {}", boost::json::serialize(version_it->value()));
+                return SigstoreError::InvalidTransparencyLog;
+              }
           }
       }
 
@@ -243,12 +317,24 @@ namespace sigstore
   outcome::std_result<void> OnlineTransparencyLogLoader::parse_verification(const boost::json::object &tlog_obj,
                                                                             OnlineTransparencyLogLoader::TransparencyLogEntryPtr entry)
   {
-    if (const auto *it = tlog_obj.find("verification"); it != tlog_obj.end() && it->value().is_object())
+    if (const auto *it = tlog_obj.find("verification"); it != tlog_obj.end())
       {
+        if (!it->value().is_object())
+          {
+            logger_->error("verification must be an object, got: {}", boost::json::serialize(it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
+
         auto verification_obj = it->value().as_object();
 
-        if (auto *proof_it = verification_obj.find("inclusionProof"); proof_it != verification_obj.end() && proof_it->value().is_object())
+        if (auto *proof_it = verification_obj.find("inclusionProof"); proof_it != verification_obj.end())
           {
+            if (!proof_it->value().is_object())
+              {
+                logger_->error("verification.inclusionProof must be an object, got: {}", boost::json::serialize(proof_it->value()));
+                return SigstoreError::InvalidTransparencyLog;
+              }
+
             auto proof_obj = proof_it->value().as_object();
             auto *inclusion_proof = entry->mutable_inclusion_proof();
 
@@ -259,10 +345,18 @@ namespace sigstore
               }
           }
 
-        if (auto *set_it = verification_obj.find("signedEntryTimestamp"); set_it != verification_obj.end() && set_it->value().is_string())
+        if (auto *set_it = verification_obj.find("signedEntryTimestamp"); set_it != verification_obj.end())
           {
-            auto set_str = std::string(set_it->value().as_string());
-            entry->mutable_inclusion_promise()->set_signed_entry_timestamp(set_str);
+            if (set_it->value().is_string())
+              {
+                auto set_str = std::string(set_it->value().as_string());
+                entry->mutable_inclusion_promise()->set_signed_entry_timestamp(set_str);
+              }
+            else
+              {
+                logger_->error("verification.signedEntryTimestamp must be a string, got: {}", boost::json::serialize(set_it->value()));
+                return SigstoreError::InvalidTransparencyLog;
+              }
           }
       }
 
@@ -288,6 +382,11 @@ namespace sigstore
               }
             inclusion_proof->set_log_index(parse_result.value());
           }
+        else
+          {
+            logger_->error("inclusionProof.logIndex must be an integer or string, got: {}", boost::json::serialize(log_index_it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
       }
 
     if (const auto *tree_size_it = proof_obj.find("treeSize"); tree_size_it != proof_obj.end())
@@ -306,15 +405,34 @@ namespace sigstore
               }
             inclusion_proof->set_tree_size(parse_result.value());
           }
+        else
+          {
+            logger_->error("inclusionProof.treeSize must be an integer or string, got: {}", boost::json::serialize(tree_size_it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
       }
 
-    if (const auto *root_hash_it = proof_obj.find("rootHash"); root_hash_it != proof_obj.end() && root_hash_it->value().is_string())
+    if (const auto *root_hash_it = proof_obj.find("rootHash"); root_hash_it != proof_obj.end())
       {
-        inclusion_proof->set_root_hash(std::string(root_hash_it->value().as_string()));
+        if (root_hash_it->value().is_string())
+          {
+            inclusion_proof->set_root_hash(std::string(root_hash_it->value().as_string()));
+          }
+        else
+          {
+            logger_->error("inclusionProof.rootHash must be a string, got: {}", boost::json::serialize(root_hash_it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
       }
 
-    if (const auto *hashes_it = proof_obj.find("hashes"); hashes_it != proof_obj.end() && hashes_it->value().is_array())
+    if (const auto *hashes_it = proof_obj.find("hashes"); hashes_it != proof_obj.end())
       {
+        if (!hashes_it->value().is_array())
+          {
+            logger_->error("inclusionProof.hashes must be an array, got: {}", boost::json::serialize(hashes_it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
+
         auto hashes_array = hashes_it->value().as_array();
         for (const auto &hash_value: hashes_array)
           {
@@ -322,13 +440,26 @@ namespace sigstore
               {
                 inclusion_proof->add_hashes(std::string(hash_value.as_string()));
               }
+            else
+              {
+                logger_->error("inclusionProof.hashes array element must be a string, got: {}", boost::json::serialize(hash_value));
+                return SigstoreError::InvalidTransparencyLog;
+              }
           }
       }
 
-    if (const auto *checkpoint_it = proof_obj.find("checkpoint"); checkpoint_it != proof_obj.end() && checkpoint_it->value().is_string())
+    if (const auto *checkpoint_it = proof_obj.find("checkpoint"); checkpoint_it != proof_obj.end())
       {
-        auto checkpoint_str = std::string(checkpoint_it->value().as_string());
-        inclusion_proof->mutable_checkpoint()->set_envelope(checkpoint_str);
+        if (checkpoint_it->value().is_string())
+          {
+            auto checkpoint_str = std::string(checkpoint_it->value().as_string());
+            inclusion_proof->mutable_checkpoint()->set_envelope(checkpoint_str);
+          }
+        else
+          {
+            logger_->error("inclusionProof.checkpoint must be a string, got: {}", boost::json::serialize(checkpoint_it->value()));
+            return SigstoreError::InvalidTransparencyLog;
+          }
       }
 
     return outcome::success();
