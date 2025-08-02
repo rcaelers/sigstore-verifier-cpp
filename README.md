@@ -20,13 +20,13 @@ The library provides verification for:
 ### Dependencies
 
 - **CMake** 3.23 or higher
-- **C++26** compatible compiler (GCC 9+, Clang, MSVC)
+- **C++20** compatible compiler
 - **OpenSSL** version 3 or higher
 - **Boost** (for JSON parsing and outcome error handling)
 - **Protocol Buffers** (automatically fetched, if not already installed)
 - **Abseil C++** (automatically fetched, if not already installed)
 - **spdlog** (for logging)
-- **Sigstore Protocol Buffers** (v0.5.0, automatically fetched,)
+- **Sigstore Protocol Buffers** (v0.5.0, automatically fetched)
 - **Google APIs Protocol Buffers** (automatically fetched)
 - **GoogleTest** (for testing)
 
