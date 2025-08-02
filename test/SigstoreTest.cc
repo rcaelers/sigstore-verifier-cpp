@@ -211,7 +211,7 @@ TEST_F(SigstoreTest, ParseStandardBundleFormat)
 
   try
     {
-      auto result = verifier.verify(content, bundle_json);
+      auto result = verifier.verify_blob(content, bundle_json);
       EXPECT_FALSE(result.has_error()) << "Failed to verify bundle: " << result.error().message();
     }
   catch (std::exception &e)
@@ -231,7 +231,7 @@ TEST_F(SigstoreTest, ValidateValidLog)
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result) << "Failed to verify transparency log: " << result.error().message();
 }
 
@@ -240,7 +240,7 @@ TEST_F(SigstoreTest, ValidateValidBundle)
   auto log = load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result);
 }
 
@@ -249,7 +249,7 @@ TEST_F(SigstoreTest, ValidateValidBundleInvalidData)
   auto log = load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data + "x", bundle);
+  auto result = verifier.verify_blob(data + "x", bundle);
   ASSERT_FALSE(result);
 }
 
@@ -259,7 +259,7 @@ TEST_F(SigstoreTest, ValidateValidBundleNoRootCertificate)
   auto log = load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result);
 }
 
@@ -275,7 +275,7 @@ TEST_F(SigstoreTest, ValidateLog_NoVerificationMaterial)
     apply_json_patch(json_val, "", [](boost::json::object &obj) { obj.erase(obj.find("verificationMaterial")); });
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -286,7 +286,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProof)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -299,7 +299,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofWrongType)
     });
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -312,7 +312,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofCheckPoint)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -337,7 +337,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofCanonicalizedBody)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -362,7 +362,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCanonicalizedBody)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -375,7 +375,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofLogIndex)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -388,7 +388,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofLogIndex1)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -401,7 +401,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofLogIndex2)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -413,7 +413,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofLogIndex3)
     });
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 
   // auto &[bundle, data] = log.value();
@@ -434,7 +434,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofTreeSize)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -447,7 +447,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofTreeSize1)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -460,7 +460,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofTreeSize2)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -473,7 +473,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofTreeSize3)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 
   // auto &[bundle, data] = log.value();
@@ -494,7 +494,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofRootHash)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -507,7 +507,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofRootHash)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -518,7 +518,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofHashes)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -532,7 +532,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofHashes)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -545,7 +545,7 @@ TEST_F(SigstoreTest, ValidateLog_EmptyInclusionProofHashes)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -570,7 +570,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpoint1)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -595,7 +595,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpoint2)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -624,7 +624,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointInconsistentTree
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -653,7 +653,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointTreeSizeWrongTyp
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -682,7 +682,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointNoBody)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -711,7 +711,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointNoSeparator)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -741,7 +741,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointNoNewLine)
 
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -770,7 +770,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointWrongSignature)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -785,7 +785,7 @@ TEST_F(SigstoreTest, ValidateLog_NoMediaType)
     obj.erase(obj.find("mediaType"));
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -796,7 +796,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidMediaType)
     obj.find("mediaType")->value() = "invalid/media-type";
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -811,7 +811,7 @@ TEST_F(SigstoreTest, ValidateLog_NoCertificate)
     obj.erase(obj.find("certificate"));
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -822,7 +822,7 @@ TEST_F(SigstoreTest, ValidateLog_NoCertificateRawBytes)
     obj.erase(obj.find("rawBytes"));
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -833,7 +833,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidCertificateRawBytes)
     obj.find("rawBytes")->value() = "invalid-certificate-data";
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -848,7 +848,7 @@ TEST_F(SigstoreTest, ValidateLog_NoTlogEntries)
     obj.erase(obj.find("tlogEntries"));
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -859,7 +859,7 @@ TEST_F(SigstoreTest, ValidateLog_EmptyTlogEntries)
     obj.find("tlogEntries")->value() = boost::json::array{};
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -869,7 +869,7 @@ TEST_F(SigstoreTest, ValidateLog_NoTlogEntryLogIndex)
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.erase(obj.find("logIndex")); });
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -881,7 +881,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidTlogEntryLogIndex)
     });
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -906,7 +906,7 @@ TEST_F(SigstoreTest, ValidateLog_NoLogId)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -921,7 +921,7 @@ TEST_F(SigstoreTest, ValidateLog_LogIdWrongType)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -933,7 +933,7 @@ TEST_F(SigstoreTest, ValidateLog_NoLogIdKeyId)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -945,7 +945,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidLogIdKeyId)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -957,7 +957,7 @@ TEST_F(SigstoreTest, ValidateLog_NoKindVersion)
   });
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -969,7 +969,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidKindVersionWrongType)
     o["kindVersion"] = "invalid-kind-version-type";
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -981,7 +981,7 @@ TEST_F(SigstoreTest, ValidateLog_NoKindVersionKind)
   });
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -993,7 +993,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidKindVersionKind)
   });
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1005,7 +1005,7 @@ TEST_F(SigstoreTest, ValidateLog_NoKindVersionVersion)
   });
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1017,7 +1017,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidKindVersionVersion)
   });
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1028,7 +1028,7 @@ TEST_F(SigstoreTest, ValidateLog_NoIntegratedTime)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1040,7 +1040,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidIntegratedTime1)
     });
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1050,7 +1050,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidIntegratedTime2)
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.find("integratedTime")->value() = true; });
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1063,7 +1063,7 @@ TEST_F(SigstoreTest, ValidateLog_IntegratedTimeOutOfRange)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1078,7 +1078,7 @@ TEST_F(SigstoreTest, ValidateLog_IntegratedTimeFuture)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1089,7 +1089,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionPromise)
     o.erase(o.find("inclusionPromise"));
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1101,7 +1101,7 @@ TEST_F(SigstoreTest, ValidateLog_InclusionPromiseWrongType)
     o["inclusionPromise"] = "invalid-inclusion-promise-type";
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1114,7 +1114,7 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionPromiseSignedEntryTimestamp)
   });
 
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1126,7 +1126,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionPromiseSignedEntryTimestamp)
     });
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1141,7 +1141,7 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageSignature)
     o.erase(o.find("messageSignature"));
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1154,7 +1154,7 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageDigest)
 
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1167,7 +1167,7 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageDigestAlgorithm)
 
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1178,7 +1178,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidMessageDigestAlgorithm)
     o.find("algorithm")->value() = "INVALID_ALGO";
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1192,7 +1192,7 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageDigestDigest)
 
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1206,7 +1206,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidMessageDigestDigest)
 
   auto &[bundle, data] = log.value();
 
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1217,7 +1217,7 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageSignatureSignature)
     o.erase(o.find("signature"));
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1228,7 +1228,7 @@ TEST_F(SigstoreTest, ValidateLog_InvalidMessageSignatureSignature)
     o.find("signature")->value() = "invalid-signature";
   });
   auto &[bundle, data] = log.value();
-  auto result = verifier.verify(data, bundle);
+  auto result = verifier.verify_blob(data, bundle);
   ASSERT_TRUE(result.has_error());
 }
 

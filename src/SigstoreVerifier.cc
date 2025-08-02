@@ -206,7 +206,7 @@ namespace sigstore
   SigstoreVerifier::SigstoreVerifier(SigstoreVerifier &&) noexcept = default;
   SigstoreVerifier &SigstoreVerifier::operator=(SigstoreVerifier &&) noexcept = default;
 
-  outcome::std_result<void> SigstoreVerifier::verify(std::string_view data, std::string_view bundle_json)
+  outcome::std_result<void> SigstoreVerifier::verify_blob(std::string_view data, std::string_view bundle_json)
   {
     return pimpl->verify(data, bundle_json);
   }
