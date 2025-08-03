@@ -129,7 +129,10 @@ endif()
 #----------------------------------------------------------------------------------------------------
 # Boost
 
-set(BOOST_COMPONENTS json dll)
+set(BOOST_COMPONENTS json)
+if(WIN32)
+  list(APPEND BOOST_COMPONENTS dll)
+endif()
 set(Boost_DEBUG OFF)
 
 if (WIN32)
