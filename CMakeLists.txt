@@ -78,7 +78,7 @@ find_package(OpenSSL REQUIRED)
 # Protobuf
 
 set(BUILD_SHARED_LIBS ON)
-find_package(absl 20250512.1 QUIET)
+find_package(absl 20250512 CONFIG QUIET)
 if(NOT absl_FOUND)
   message(STATUS "Abseil not found, fetching compatible version...")
 
@@ -92,7 +92,7 @@ if(NOT absl_FOUND)
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
     GIT_TAG        20250512.1
     GIT_SHALLOW    TRUE
-   # OVERRIDE_FIND_PACKAGE
+    OVERRIDE_FIND_PACKAGE
   )
   FetchContent_MakeAvailable(abseil)
 
@@ -100,7 +100,7 @@ if(NOT absl_FOUND)
 endif()
 
 find_package(Protobuf 6.31.1 QUIET CONFIG)
-if(NOT protobuf_FOUND)
+if(NOT Protobuf_FOUND)
   message(STATUS "Protobuf not found, fetching compatible version...")
   set(protobuf_BUILD_TESTS OFF)
   set(protobuf_BUILD_SHARED_LIBS ON)
@@ -116,6 +116,7 @@ if(NOT protobuf_FOUND)
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
     GIT_TAG        v32.0-rc1
     GIT_SHALLOW    TRUE
+    OVERRIDE_FIND_PACKAGE
   )
   FetchContent_MakeAvailable(protobuf)
 
@@ -128,7 +129,7 @@ endif()
 #----------------------------------------------------------------------------------------------------
 # Boost
 
-set(BOOST_COMPONENTS json)
+set(BOOST_COMPONENTS json dll)
 set(Boost_DEBUG OFF)
 
 if (WIN32)

@@ -22,6 +22,7 @@ target_link_libraries(test-sigstore
   OpenSSL::SSL
   OpenSSL::Crypto
   Boost::json
+  Boost::dll
 )
 target_include_directories(test-sigstore
   PRIVATE
