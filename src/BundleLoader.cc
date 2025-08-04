@@ -44,7 +44,16 @@ namespace sigstore
         return SigstoreError::InvalidBundle;
       }
 
-    std::string json_content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::string json_content;
+    try
+      {
+        json_content.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+      }
+    catch (const std::exception &e)
+      {
+        logger_->error("Error while reading file: {}: {}", file_path.string(), e.what());
+        return SigstoreError::InvalidBundle;
+      }
 
     if (file.bad())
       {
