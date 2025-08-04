@@ -22,7 +22,7 @@ on:
     - cron: "34 13 * * 6"
 
 jobs:
-  analyze:
+  analyze-windows:
     name: Analyze
     runs-on: windows-latest
     permissions:
@@ -74,6 +74,48 @@ jobs:
           export MSYSTEM=CLANG64
           cmake -GNinja -B_build -H. -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/msys2.cmake -DCMAKE_INSTALL_PREFIX=_deploy -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
           ninja -C _build -v
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  build-linux:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            libboost-all-dev \
+            libssl-dev \
+            libspdlog-dev \
+            pkg-config
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+
+      - name: Build and test
+        run: |
+          mkdir _build _deploy
+          cmake -GNinja -B_build -H. -DCMAKE_INSTALL_PREFIX=_deploy -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          ninja -C _build -v install
+          cd _build
+          ctest -V
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
