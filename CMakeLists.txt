@@ -78,6 +78,14 @@ find_package(OpenSSL REQUIRED)
 # Protobuf
 
 set(BUILD_SHARED_LIBS ON)
+
+# On Windows, put all DLLs and executables in the same directory
+if(WIN32)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+endif()
+
 find_package(absl 20250512 CONFIG QUIET)
 if(NOT absl_FOUND)
   message(STATUS "Abseil not found, fetching compatible version...")
@@ -191,9 +199,13 @@ if (WIN32)
   endif()
 
   file(TO_NATIVE_PATH "${PROJECT_BINARY_DIR}/src" SRC_PATH)
-  file(TO_NATIVE_PATH "${CMAKE_INSTALL_PREFIX}/bin" BIN_PATH)
-  set(TEST_PATH_ENV "${SRC_PATH};${BIN_PATH};$ENV{PATH}")
+  file(TO_NATIVE_PATH "${PROJECT_BINARY_DIR}/bin" BIN_PATH)
+  file(TO_NATIVE_PATH "${CMAKE_INSTALL_PREFIX}/bin" INSTALL_BIN_PATH)
+  set(TEST_PATH_ENV "${SRC_PATH};${BIN_PATH};${INSTALL_BIN_PATH};$ENV{PATH}")
   string(REPLACE ";" "\\;" TEST_PATH_ENV "${TEST_PATH_ENV}")
+
+  # Set PATH for protoc to find Abseil DLLs
+  set(ENV{PATH} "${BIN_PATH};$ENV{PATH}")
 endif()
 
 add_subdirectory(src)
