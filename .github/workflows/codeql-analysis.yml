@@ -50,6 +50,7 @@ jobs:
           msystem: clang64
           install: >-
             git
+            mingw-w64-clang-x86_64-abseil-cpp
             mingw-w64-clang-x86_64-boost
             mingw-w64-clang-x86_64-clang
             mingw-w64-clang-x86_64-cmake
@@ -57,6 +58,7 @@ jobs:
             mingw-w64-clang-x86_64-lld
             mingw-w64-clang-x86_64-ninja
             mingw-w64-clang-x86_64-openssl
+            mingw-w64-clang-x86_64-protobuf
             mingw-w64-clang-x86_64-spdlog
             tar
             xz
