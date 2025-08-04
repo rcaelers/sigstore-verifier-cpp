@@ -22,13 +22,17 @@ target_link_libraries(test-sigstore
   OpenSSL::SSL
   OpenSSL::Crypto
   Boost::json
-  $<$<PLATFORM_ID:Windows>:Boost::dll>
 )
 target_include_directories(test-sigstore
   PRIVATE
   ${PROJECT_SOURCE_DIR}/src
   ${PROJECT_SOURCE_DIR}/include
   ${CMAKE_BINARY_DIR}/src/generated
+)
+
+target_compile_definitions(test-sigstore
+  PRIVATE
+  BOOST_DLL_USE_STD_FS
 )
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/appcast-sigstore.xml" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
