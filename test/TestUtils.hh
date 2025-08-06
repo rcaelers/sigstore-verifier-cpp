@@ -21,16 +21,15 @@
 #pragma once
 
 #include <filesystem>
-#include <string>
-#include <boost/dll/runtime_symbol_info.hpp>
 
-// Helper function to locate test data files relative to executable location
 inline std::string
 find_test_data_file(const std::string &filename)
 {
-  auto boost_exe_path = boost::dll::program_location();
-  std::filesystem::path exe_dir = std::filesystem::path(boost_exe_path.string()).parent_path();
-  std::filesystem::path test_data_path = exe_dir / filename;
-
+#ifdef TEST_DATA_DIR
+  std::string test_data_dir = TEST_DATA_DIR;
+  std::filesystem::path test_data_path = std::filesystem::path(test_data_dir) / filename;
+#else
+  std::filesystem::path test_data_path = std::filesystem::current_path() / filename;
+#endif
   return test_data_path.string();
 }
