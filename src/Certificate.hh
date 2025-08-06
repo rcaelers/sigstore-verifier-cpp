@@ -21,17 +21,16 @@
 #ifndef CERTIFICATE_HH
 #define CERTIFICATE_HH
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
-#include <chrono>
 #include <boost/outcome/std_result.hpp>
-#include <spdlog/spdlog.h>
 #include <openssl/x509.h>
+#include <spdlog/spdlog.h>
 
 #include "Logging.hh"
-#include "CryptographicAlgorithms.hh"
-
+#include "sigstore/Certificate.hh"
 #include "sigstore_common.pb.h"
 
 namespace outcome = boost::outcome_v2;
@@ -40,42 +39,41 @@ namespace sigstore
 {
   class PublicKey; // Forward declaration
 
-  class Certificate
+  class Certificate : public CertificateInfo
   {
   public:
     explicit Certificate(std::unique_ptr<X509, decltype(&X509_free)> x509_cert);
     Certificate() = delete;
 
-    Certificate(Certificate &&other) noexcept = default;
-    Certificate &operator=(Certificate &&other) noexcept = default;
+    Certificate(Certificate &&other) noexcept = delete;
+    Certificate &operator=(Certificate &&other) noexcept = delete;
     Certificate(const Certificate &) = delete;
     Certificate &operator=(const Certificate &) = delete;
-    ~Certificate() = default;
-
-    X509 *get() const;
+    ~Certificate() override = default;
 
     static std::shared_ptr<Certificate> from_pem(const std::string &cert_pem);
     static std::shared_ptr<Certificate> from_der(const std::vector<uint8_t> &cert_der);
     static std::shared_ptr<Certificate> from_der(const std::string &cert_der);
     static std::shared_ptr<Certificate> from_cert(const dev::sigstore::common::v1::X509Certificate &x509_cert);
 
-    std::string subject_email() const;
-    std::string oidc_issuer() const;
-    bool is_self_signed() const;
-
-    outcome::std_result<std::chrono::system_clock::time_point> get_not_before() const;
-    outcome::std_result<std::chrono::system_clock::time_point> get_not_after() const;
-    outcome::std_result<bool> is_valid_at_time(const std::chrono::system_clock::time_point &timestamp) const;
-
-    std::shared_ptr<PublicKey> get_public_key() const;
+    std::string subject_email() const override;
+    std::string oidc_issuer() const override;
 
     outcome::std_result<void> verify_signature(const std::vector<uint8_t> &data,
                                                const std::vector<uint8_t> &signature,
-                                               DigestAlgorithm digest_algorithm = DigestAlgorithm::SHA256) const;
+                                               DigestAlgorithm digest_algorithm = DigestAlgorithm::SHA256) const override;
 
     outcome::std_result<void> verify_signature(const std::string &data,
                                                const std::string &signature,
-                                               DigestAlgorithm digest_algorithm = DigestAlgorithm::SHA256) const;
+                                               DigestAlgorithm digest_algorithm = DigestAlgorithm::SHA256) const override;
+
+    X509 *get_x509() const override;
+
+    bool is_self_signed() const;
+    outcome::std_result<std::chrono::system_clock::time_point> get_not_before() const;
+    outcome::std_result<std::chrono::system_clock::time_point> get_not_after() const;
+    outcome::std_result<bool> is_valid_at_time(const std::chrono::system_clock::time_point &timestamp) const;
+    std::shared_ptr<PublicKey> get_public_key() const;
 
     outcome::std_result<void> verify_key_usage() const;
 

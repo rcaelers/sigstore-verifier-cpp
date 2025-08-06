@@ -18,13 +18,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <gtest/gtest.h>
-#include <openssl/sha.h>
+#include "RFC6962Hasher.hh"
+
+#include <array>
 #include <iomanip>
 #include <sstream>
-#include <array>
+#include <gtest/gtest.h>
+#include <openssl/sha.h>
 
-#include "RFC6962Hasher.hh"
 
 namespace sigstore::test
 {

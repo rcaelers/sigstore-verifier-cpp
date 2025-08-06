@@ -21,16 +21,15 @@
 #ifndef MERKLE_TREE_VALIDATOR_HH
 #define MERKLE_TREE_VALIDATOR_HH
 
-#include <string>
-#include <memory>
 #include <cstdint>
-#include <spdlog/logger.h>
+#include <memory>
+#include <string>
 #include <boost/outcome/std_result.hpp>
-
-#include "RFC6962Hasher.hh"
-#include "Logging.hh"
-
 #include <google/protobuf/repeated_ptr_field.h>
+#include <spdlog/logger.h>
+
+#include "Logging.hh"
+#include "RFC6962Hasher.hh"
 
 namespace outcome = boost::outcome_v2;
 

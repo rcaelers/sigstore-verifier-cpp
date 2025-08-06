@@ -1,5 +1,4 @@
 add_executable(test-sigstore
-  BundleHelperTest.cc
   BundleLoaderTest.cc
   BundleTest.cc
   CanonicalBodyParserTest.cc

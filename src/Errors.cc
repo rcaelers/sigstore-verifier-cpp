@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Rob Caelers <rob.caelers@gmail.com>
+// Copyright (C) 2025 Rob Caelers <rob.caelers@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,43 +18,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef UTILS_LOGGING_HH
-#define UTILS_LOGGING_HH
+#include "sigstore/Errors.hh"
 
-#include <sstream>
-#include <string>
-#include <boost/core/detail/string_view.hpp>
-#include <boost/system/error_code.hpp>
-#include <fmt/core.h>
-#include <fmt/format.h>
-#include <spdlog/fmt/ostr.h>
-#include <spdlog/spdlog.h>
-
-class Logging
+namespace sigstore
 {
-public:
-  static std::shared_ptr<spdlog::logger> create(std::string domain);
-};
 
-template<>
-struct fmt::formatter<boost::system::error_code> : fmt::formatter<std::string>
-{
-  auto format(boost::system::error_code e, format_context &ctx) const
+  const std::error_category &context_error_category()
   {
-    std::ostringstream ss;
-    ss << e;
-    auto s = ss.str();
-    return fmt::formatter<std::string>::format(s, ctx);
+    static SigstoreErrorCategory category;
+    return category;
   }
-};
 
-template<typename C>
-struct fmt::formatter<boost::core::basic_string_view<C>> : fmt::formatter<std::string_view>
-{
-  auto format(const typename boost::core::basic_string_view<C> &s, format_context &ctx) const
+  std::error_code make_error_code(SigstoreError e)
   {
-    return fmt::formatter<std::string_view>::format((std::string_view(s)), ctx);
+    return {static_cast<int>(e), context_error_category()};
   }
-};
 
-#endif // UTILS_WORKAVE_LIBS_UTILS_LOGGING_HH
+} // namespace sigstore

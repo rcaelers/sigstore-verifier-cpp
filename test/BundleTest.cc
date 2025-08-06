@@ -18,27 +18,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#include <chrono>
+#include <fstream>
+#include <memory>
+#include <string>
+#include <tuple>
+#include <vector>
 #include <boost/json/serialize.hpp>
 #include <boost/json/serializer.hpp>
 #include <boost/outcome/success_failure.hpp>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <memory>
+#include <gtest/gtest.h>
 #include <spdlog/logger.h>
-#include <tuple>
-#include <vector>
-#include <chrono>
 
-#include "TestUtils.hh"
-#include <fstream>
-#include <string>
-
-#include "TransparencyLogVerifier.hh"
-#include "BundleLoader.hh"
-#include "Certificate.hh"
-#include "sigstore/SigstoreErrors.hh"
 #include "Base64.hh"
-
+#include "BundleLoader.hh"
+#include "BundleImpl.hh"
+#include "Certificate.hh"
+#include "TestUtils.hh"
+#include "TransparencyLogVerifier.hh"
+#include "sigstore/Errors.hh"
 #include "sigstore_rekor.pb.h"
 
 using namespace sigstore;
@@ -91,7 +90,7 @@ protected:
     return nullptr;
   }
 
-  outcome::std_result<std::tuple<dev::sigstore::rekor::v1::TransparencyLogEntry, dev::sigstore::bundle::v1::Bundle, std::shared_ptr<Certificate>>>
+  outcome::std_result<std::tuple<dev::sigstore::rekor::v1::TransparencyLogEntry, std::shared_ptr<BundleImpl>, std::shared_ptr<Certificate>>>
   load_standard_bundle(std::function<void(boost::json::value &json_val)> patch = [](boost::json::value &json_val) {})
   {
     std::string file_path = find_test_data_file("appcast-sigstore.xml.sigstore.bundle");
@@ -147,7 +146,9 @@ protected:
           {
             return SigstoreError::InvalidBundle;
           }
-        return {std::move(log_entries[0]), std::move(bundle), cert};
+        auto context = std::make_shared<ContextImpl>();
+        auto bundle_impl = std::make_shared<BundleImpl>(context, bundle);
+        return {std::move(log_entries[0]), std::move(bundle_impl), cert};
       }
     catch (const std::exception &e)
       {

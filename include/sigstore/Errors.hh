@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef SIGSTORE_ERRORS_HH
-#define SIGSTORE_ERRORS_HH
+#ifndef CONTEXT_ERRORS_HH
+#define CONTEXT_ERRORS_HH
 
 #include <system_error>
 
@@ -32,6 +32,7 @@ namespace sigstore
     InvalidCertificate,
     InvalidPublicKey,
     InvalidTransparencyLog,
+    InvalidContext,
     JsonParseError,
     SystemError,
     InvalidBase64,
@@ -50,7 +51,7 @@ namespace sigstore
       switch (static_cast<SigstoreError>(ev))
         {
         case SigstoreError::InvalidBundle:
-          return "Invalid sigstore bundle";
+          return "Invalid bundle";
         case SigstoreError::InvalidSignature:
           return "Invalid signature";
         case SigstoreError::InvalidCertificate:
@@ -58,7 +59,9 @@ namespace sigstore
         case SigstoreError::InvalidPublicKey:
           return "Invalid public key";
         case SigstoreError::InvalidTransparencyLog:
-          return "Transparency log verification failed";
+          return "Invalid transparency log";
+        case SigstoreError::InvalidContext:
+          return "Invalid context";
         case SigstoreError::JsonParseError:
           return "JSON parse error";
         case SigstoreError::SystemError:
@@ -71,7 +74,7 @@ namespace sigstore
     }
   };
 
-  const std::error_category &sigstore_error_category();
+  const std::error_category &context_error_category();
   std::error_code make_error_code(SigstoreError e);
 
 } // namespace sigstore
@@ -79,9 +82,9 @@ namespace sigstore
 namespace std
 {
   template<>
-  struct is_error_code_enum<sigstore::SigstoreError> : true_type
+  struct is_error_code_enum<sigstore::SigstoreError> : std::true_type
   {
   };
 } // namespace std
 
-#endif // SIGSTORE_ERRORS_HH
+#endif

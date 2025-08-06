@@ -20,19 +20,19 @@
 
 #include "Certificate.hh"
 
+#include <array>
 #include <chrono>
 #include <ctime>
-#include <array>
+#include <fmt/chrono.h>
+#include <openssl/asn1.h>
 #include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/objects.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
-#include <openssl/evp.h>
-#include <openssl/asn1.h>
-#include <openssl/objects.h>
-#include <fmt/chrono.h>
 
-#include "sigstore/SigstoreErrors.hh"
 #include "PublicKey.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {
@@ -52,11 +52,6 @@ namespace sigstore
   Certificate::Certificate(std::unique_ptr<X509, decltype(&X509_free)> x509_cert)
     : x509_cert_(std::move(x509_cert))
   {
-  }
-
-  X509 *Certificate::get() const
-  {
-    return x509_cert_.get();
   }
 
   std::shared_ptr<Certificate> Certificate::from_pem(const std::string &cert_pem)
@@ -120,7 +115,7 @@ namespace sigstore
 
   bool Certificate::is_self_signed() const
   {
-    X509 *cert = get();
+    X509 *cert = x509_cert_.get();
 
     if (cert == nullptr)
       {
@@ -153,7 +148,7 @@ namespace sigstore
 
   std::string Certificate::subject_email() const
   {
-    X509 *cert = get();
+    X509 *cert = x509_cert_.get();
 
     if (cert == nullptr)
       {
@@ -198,7 +193,7 @@ namespace sigstore
 
   std::string Certificate::oidc_issuer() const
   {
-    X509 *cert = get();
+    X509 *cert = x509_cert_.get();
 
     if (cert == nullptr)
       {
@@ -245,7 +240,7 @@ namespace sigstore
 
   outcome::std_result<std::chrono::system_clock::time_point> Certificate::get_not_before() const
   {
-    X509 *cert = get();
+    X509 *cert = x509_cert_.get();
     if (cert == nullptr)
       {
         logger_->error("Certificate is null");
@@ -277,7 +272,7 @@ namespace sigstore
 
   outcome::std_result<std::chrono::system_clock::time_point> Certificate::get_not_after() const
   {
-    X509 *cert = get();
+    X509 *cert = x509_cert_.get();
     if (cert == nullptr)
       {
         logger_->error("Certificate is null");
@@ -380,13 +375,18 @@ namespace sigstore
     return public_key->verify_signature(data, signature, digest_algorithm);
   }
 
+  X509 *Certificate::get_x509() const
+  {
+    return x509_cert_.get();
+  }
+
   outcome::std_result<void> Certificate::verify_key_usage() const
   {
     try
       {
         logger_->debug("Verifying certificate key usage");
 
-        X509 *cert = get();
+        X509 *cert = x509_cert_.get();
         if (cert == nullptr)
           {
             logger_->error("Invalid certificate for key usage verification");

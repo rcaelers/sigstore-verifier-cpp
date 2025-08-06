@@ -65,20 +65,22 @@ add_library(sigstore OBJECT)
 
 target_sources(sigstore PRIVATE
   Base64.cc
-  Logging.cc
-  BundleHelper.cc
+  Bundle.cc
+  BundleImpl.cc
   BundleLoader.cc
   CanonicalBodyParser.cc
   Certificate.cc
   CertificateStore.cc
   CheckpointParser.cc
+  Context.cc
+  ContextImpl.cc
   CryptographicAlgorithms.cc
+  Errors.cc
+  Logging.cc
   MerkleTreeValidator.cc
+  OnlineTransparencyLogLoader.cc
   PublicKey.cc
   RFC6962Hasher.cc
-  SigstoreErrors.cc
-  SigstoreVerifier.cc
-  OnlineTransparencyLogLoader.cc
   TransparencyLogLoader.cc
   TransparencyLogVerifier.cc
   ${SIGSTORE_PROTO_SRCS}

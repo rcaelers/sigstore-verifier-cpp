@@ -21,15 +21,14 @@
 #include "Base64.hh"
 
 #include <algorithm>
-#include <string>
 #include <cctype>
-
-#include <boost/archive/iterators/binary_from_base64.hpp>
-#include <boost/archive/iterators/base64_from_binary.hpp>
-#include <boost/archive/iterators/transform_width.hpp>
+#include <string>
 #include <boost/algorithm/string.hpp>
+#include <boost/archive/iterators/base64_from_binary.hpp>
+#include <boost/archive/iterators/binary_from_base64.hpp>
+#include <boost/archive/iterators/transform_width.hpp>
 
-#include "sigstore/SigstoreErrors.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {
@@ -144,4 +143,3 @@ namespace sigstore
   }
 
 } // namespace sigstore
-

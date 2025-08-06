@@ -18,53 +18,50 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef CHECKPOINT_PARSER_HH
-#define CHECKPOINT_PARSER_HH
+#ifndef CONTEXT_IMPL_HH
+#define CONTEXT_IMPL_HH
 
 #include <memory>
-#include <string>
-#include <vector>
-#include <boost/outcome/std_result.hpp>
-#include <spdlog/spdlog.h>
 
 #include "Logging.hh"
-#include "sigstore_rekor.pb.h"
+#include "sigstore/Context.hh"
 
-namespace outcome = boost::outcome_v2;
+namespace spdlog
+{
+  class logger;
+}
+namespace dev::sigstore::bundle::v1
+{
+  class Bundle;
+}
 
 namespace sigstore
 {
-  struct CheckpointSignature
-  {
-    std::string signer;
-    std::string signature;
-  };
+  class TransparencyLogVerifier;
+  class CertificateStore;
 
-  struct ParsedCheckpoint
-  {
-    std::string origin;
-    std::uint64_t tree_size = 0;
-    std::string root_hash;
-    std::vector<std::string> extensions;
-    std::vector<CheckpointSignature> signatures;
-    std::string body;
-  };
-
-  class CheckpointParser
+  class ContextImpl : public Context
   {
   public:
-    CheckpointParser() = default;
+    ContextImpl();
+    ~ContextImpl() override;
 
-    outcome::std_result<ParsedCheckpoint> parse_from_string(const std::string &checkpoint_data);
-    outcome::std_result<ParsedCheckpoint> parse_from_protobuf(const dev::sigstore::rekor::v1::Checkpoint &protobuf_checkpoint);
+    ContextImpl(const ContextImpl &) = delete;
+    ContextImpl &operator=(const ContextImpl &) = delete;
+    ContextImpl(ContextImpl &&) = delete;
+    ContextImpl &operator=(ContextImpl &&) = delete;
+
+    outcome::std_result<void> load_embedded_fulcio_ca_certificates() override;
+    outcome::std_result<void> add_ca_certificate(const std::string &ca_certificate) override;
+
+    std::shared_ptr<CertificateStore> get_certificate_store() const;
 
   private:
-    bool parse_checkpoint_body(const std::string_view &body_text, ParsedCheckpoint &checkpoint);
-    bool parse_checkpoint_signatures(const std::string_view &signature_text, ParsedCheckpoint &checkpoint);
-
-    std::shared_ptr<spdlog::logger> logger_{Logging::create("sigstore:checkpoint_parser")};
+    std::shared_ptr<spdlog::logger> logger_{Logging::create("sigstore")};
+    std::shared_ptr<CertificateStore> certificate_store_;
+    std::string rekor_public_key_;
   };
 
 } // namespace sigstore
 
-#endif // CHECKPOINT_PARSER_HH
+#endif // CONTEXT_IMPL_HH

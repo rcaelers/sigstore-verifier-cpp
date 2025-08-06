@@ -18,10 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <gtest/gtest.h>
-#include <string>
-
 #include "PublicKey.hh"
+
+#include <string>
+#include <gtest/gtest.h>
+
 #include "CryptographicAlgorithms.hh"
 
 using namespace sigstore;

@@ -24,8 +24,8 @@
 #include <boost/json.hpp>
 #include <google/protobuf/util/json_util.h>
 
-#include "sigstore/SigstoreErrors.hh"
 #include "Base64.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {

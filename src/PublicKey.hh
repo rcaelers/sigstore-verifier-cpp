@@ -25,11 +25,11 @@
 #include <string>
 #include <vector>
 #include <boost/outcome/std_result.hpp>
-#include <spdlog/spdlog.h>
 #include <openssl/evp.h>
+#include <spdlog/spdlog.h>
 
-#include "Logging.hh"
 #include "CryptographicAlgorithms.hh"
+#include "Logging.hh"
 
 namespace outcome = boost::outcome_v2;
 

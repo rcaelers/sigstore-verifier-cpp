@@ -23,8 +23,8 @@
 #include <fstream>
 #include <google/protobuf/util/json_util.h>
 
-#include "sigstore/SigstoreErrors.hh"
 #include "Certificate.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {

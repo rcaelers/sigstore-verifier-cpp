@@ -20,12 +20,12 @@
 
 #include "MerkleTreeValidator.hh"
 
-#include <sstream>
-#include <iomanip>
 #include <algorithm>
 #include <bit>
+#include <iomanip>
+#include <sstream>
 
-#include "sigstore/SigstoreErrors.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {

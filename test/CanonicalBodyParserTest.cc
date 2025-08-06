@@ -18,18 +18,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#include "CanonicalBodyParser.hh"
+
+#include <fstream>
+#include <memory>
+#include <string>
 #include <boost/json.hpp>
 #include <boost/outcome/success_failure.hpp>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <memory>
+#include <gtest/gtest.h>
 #include <spdlog/logger.h>
-#include <fstream>
-#include <string>
 
-#include "CanonicalBodyParser.hh"
 #include "TestUtils.hh"
-#include "sigstore/SigstoreErrors.hh"
+#include "sigstore/Errors.hh"
 
 using namespace sigstore;
 

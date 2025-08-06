@@ -19,7 +19,8 @@
 // THE SOFTWARE.
 
 #include "CryptographicAlgorithms.hh"
-#include "sigstore/SigstoreErrors.hh"
+
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {

@@ -21,13 +21,13 @@
 #ifndef ONLINE_TRANSPARENCY_LOG_LOADER_HH
 #define ONLINE_TRANSPARENCY_LOG_LOADER_HH
 
+#include <filesystem>
+#include <map>
 #include <memory>
 #include <string>
-#include <map>
-#include <filesystem>
-#include <spdlog/spdlog.h>
-#include <boost/outcome/std_result.hpp>
 #include <boost/json.hpp>
+#include <boost/outcome/std_result.hpp>
+#include <spdlog/spdlog.h>
 
 #include "Logging.hh"
 #include "sigstore_rekor.pb.h"

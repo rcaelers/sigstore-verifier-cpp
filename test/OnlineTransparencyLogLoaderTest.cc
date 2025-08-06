@@ -18,14 +18,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <gtest/gtest.h>
+#include "OnlineTransparencyLogLoader.hh"
+
 #include <filesystem>
 #include <fstream>
 #include <boost/json.hpp>
+#include <gtest/gtest.h>
 
-#include "OnlineTransparencyLogLoader.hh"
-#include "sigstore/SigstoreErrors.hh"
 #include "TestUtils.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore::test
 {

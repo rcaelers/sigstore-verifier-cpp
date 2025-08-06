@@ -20,16 +20,16 @@
 
 #include "CertificateStore.hh"
 
+#include <boost/json.hpp>
 #include <boost/json/array.hpp>
-#include <openssl/pem.h>
-#include <openssl/x509v3.h>
-#include <openssl/x509_vfy.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
-#include <boost/json.hpp>
+#include <openssl/pem.h>
+#include <openssl/x509_vfy.h>
+#include <openssl/x509v3.h>
 
 #include "Certificate.hh"
-#include "sigstore/SigstoreErrors.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {
@@ -175,7 +175,7 @@ namespace sigstore
 
     for (const auto &root_cert: root_certificates_)
       {
-        if (X509_STORE_add_cert(store.get(), root_cert->get()) != 1)
+        if (X509_STORE_add_cert(store.get(), root_cert->get_x509()) != 1)
           {
             logger_->warn("Failed to add root certificate to store, may be duplicate");
           }
@@ -204,11 +204,11 @@ namespace sigstore
 
     for (const auto &intermediate_cert: intermediate_certificates_)
       {
-        X509_up_ref(intermediate_cert->get());
-        if (sk_X509_push(untrusted.get(), intermediate_cert->get()) <= 0)
+        X509_up_ref(intermediate_cert->get_x509());
+        if (sk_X509_push(untrusted.get(), intermediate_cert->get_x509()) <= 0)
           {
             logger_->warn("Failed to add intermediate certificate to stack");
-            X509_free(intermediate_cert->get());
+            X509_free(intermediate_cert->get_x509());
             break;
           }
       }
@@ -220,7 +220,7 @@ namespace sigstore
         return SigstoreError::SystemError;
       }
 
-    if (X509_STORE_CTX_init(ctx.get(), root_store_.get(), cert->get(), untrusted.get()) != 1)
+    if (X509_STORE_CTX_init(ctx.get(), root_store_.get(), cert->get_x509(), untrusted.get()) != 1)
       {
         logger_->error("Failed to initialize verification context");
         return SigstoreError::SystemError;

@@ -20,11 +20,11 @@
 
 #include "CanonicalBodyParser.hh"
 
-#include <boost/json.hpp>
 #include <memory>
+#include <boost/json.hpp>
 
 #include "Base64.hh"
-#include "sigstore/SigstoreErrors.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {
@@ -37,7 +37,7 @@ namespace sigstore
         logger_->error("Failed to parse canonicalized body JSON: {}", ec.message());
         return SigstoreError::InvalidTransparencyLog;
       }
-    
+
     if (!json_val.is_object())
       {
         logger_->error("Canonicalized body is not a valid JSON object");

@@ -23,6 +23,8 @@
 
 #include <string>
 #include <boost/outcome/std_result.hpp>
+#include <sigstore/Certificate.hh>
+
 
 namespace outcome = boost::outcome_v2;
 
@@ -34,14 +36,6 @@ namespace sigstore
     RSA,
     ECDSA,
     EdDSA
-  };
-
-  enum class DigestAlgorithm
-  {
-    SHA1,
-    SHA256,
-    SHA384,
-    SHA512
   };
 
   outcome::std_result<DigestAlgorithm> digest_algorithm_from_string(const std::string &algorithm_name);

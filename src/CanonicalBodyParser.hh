@@ -21,13 +21,13 @@
 #ifndef CANONICAL_BODY_PARSER_HH
 #define CANONICAL_BODY_PARSER_HH
 
-#include <boost/outcome/std_result.hpp>
-#include <boost/json/object.hpp>
 #include <memory>
 #include <string>
 #include <variant>
-
+#include <boost/json/object.hpp>
+#include <boost/outcome/std_result.hpp>
 #include <spdlog/spdlog.h>
+
 #include "Logging.hh"
 
 namespace outcome = boost::outcome_v2;

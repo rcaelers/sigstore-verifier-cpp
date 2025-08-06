@@ -18,12 +18,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <gtest/gtest.h>
+#include "TransparencyLogLoader.hh"
+
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 
-#include "TransparencyLogLoader.hh"
 #include "sigstore_rekor.pb.h"
+
 
 namespace sigstore::test
 {

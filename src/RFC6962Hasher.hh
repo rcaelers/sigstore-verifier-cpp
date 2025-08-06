@@ -20,11 +20,12 @@
 
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
 #include <spdlog/logger.h>
 
 #include "Logging.hh"
+
 
 namespace sigstore
 {

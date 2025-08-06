@@ -21,14 +21,13 @@
 #ifndef REKOR_TRANSACTION_LOG_LOADER_HH
 #define REKOR_TRANSACTION_LOG_LOADER_HH
 
-#include <boost/outcome/std_result.hpp>
+#include <filesystem>
 #include <memory>
 #include <string>
-#include <filesystem>
-
+#include <boost/outcome/std_result.hpp>
 #include <spdlog/spdlog.h>
-#include "Logging.hh"
 
+#include "Logging.hh"
 #include "sigstore_rekor.pb.h"
 
 namespace outcome = boost::outcome_v2;

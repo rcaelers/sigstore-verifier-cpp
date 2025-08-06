@@ -18,19 +18,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
-
-#include "sigstore/SigstoreVerifier.hh"
-
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include <gtest/gtest.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+
+#include "sigstore/Bundle.hh"
+#include "sigstore/Context.hh"
 #if SPDLOG_VERSION >= 10600
 #  include <spdlog/pattern_formatter.h>
 #endif
 
-#include <filesystem>
 #if SPDLOG_VERSION >= 10801
 #  include <spdlog/cfg/env.h>
 #endif
@@ -40,24 +39,24 @@ using namespace sigstore;
 using namespace testing;
 
 #ifdef _WIN32
-#  include <windows.h>
-#  include <io.h>
 #  include <fcntl.h>
+#  include <io.h>
+#  include <windows.h>
 #endif
 
-#include <boost/json.hpp>
-#include <boost/outcome/success_failure.hpp>
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
-#include <memory>
-#include <spdlog/logger.h>
-#include <tuple>
 #include <chrono>
 #include <fstream>
+#include <memory>
 #include <string>
+#include <tuple>
+#include <boost/json.hpp>
+#include <boost/outcome/success_failure.hpp>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <spdlog/logger.h>
 
-#include "sigstore/SigstoreErrors.hh"
 #include "TestUtils.hh"
+#include "sigstore/Errors.hh"
 
 struct GlobalSigStoreTest : public ::testing::Environment
 {
@@ -120,7 +119,8 @@ public:
 protected:
   void SetUp() override
   {
-    [[maybe_unused]] auto result = verifier.load_embedded_fulcio_ca_certificates();
+    verifier = sigstore::Context::instance_default();
+    [[maybe_unused]] auto result = verifier->load_embedded_fulcio_ca_certificates();
   }
 
   void TearDown() override
@@ -192,7 +192,7 @@ protected:
       }
   }
 
-  SigstoreVerifier verifier;
+  std::shared_ptr<Context> verifier;
 };
 
 TEST_F(SigstoreTest, ParseStandardBundleFormat)
@@ -211,7 +211,12 @@ TEST_F(SigstoreTest, ParseStandardBundleFormat)
 
   try
     {
-      auto result = verifier.verify_blob(content, bundle_json);
+      auto context = sigstore::Context::instance_default();
+      auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+      ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+      auto bundle = bundle_result.value();
+
+      auto result = bundle->verify(content);
       EXPECT_FALSE(result.has_error()) << "Failed to verify bundle: " << result.error().message();
     }
   catch (std::exception &e)
@@ -227,39 +232,57 @@ TEST_F(SigstoreTest, ParseStandardBundleFormat)
 
 TEST_F(SigstoreTest, ValidateValidLog)
 {
-  auto log = load_standard_bundle();
+  auto log = this->load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
-  auto &[bundle, data] = log.value();
+  auto &[bundle_json, data] = log.value();
 
-  auto result = verifier.verify_blob(data, bundle);
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result) << "Failed to verify transparency log: " << result.error().message();
 }
 
 TEST_F(SigstoreTest, ValidateValidBundle)
 {
-  auto log = load_standard_bundle();
+  auto log = this->load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result);
 }
 
 TEST_F(SigstoreTest, ValidateValidBundleInvalidData)
 {
-  auto log = load_standard_bundle();
+  auto log = this->load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data + "x", bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data + "x");
   ASSERT_FALSE(result);
 }
 
 TEST_F(SigstoreTest, ValidateValidBundleNoRootCertificate)
 {
-  SigstoreVerifier verifier;
-  auto log = load_standard_bundle();
+  auto context = sigstore::Context::instance();
+  auto log = this->load_standard_bundle();
   ASSERT_FALSE(log.has_error()) << "Failed to load test data";
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result);
 }
 
@@ -274,9 +297,10 @@ TEST_F(SigstoreTest, ValidateLog_NoVerificationMaterial)
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "", [](boost::json::object &obj) { obj.erase(obj.find("verificationMaterial")); });
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoInclusionProof)
@@ -285,8 +309,14 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProof)
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.erase(obj.find("inclusionProof")); });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -298,9 +328,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofWrongType)
       obj["inclusionProof"] = "invalid-type";
     });
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoInclusionProofCheckPoint)
@@ -311,8 +342,14 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofCheckPoint)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -336,8 +373,12 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofCanonicalizedBody)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -361,8 +402,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCanonicalizedBody)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -374,8 +421,12 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofLogIndex)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -387,8 +438,12 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofLogIndex1)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -400,8 +455,12 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofLogIndex2)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -412,17 +471,11 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofLogIndex3)
       obj.find("logIndex")->value() = "foo";
     });
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
 
-  // auto &[bundle, data] = log.value();
-
-  // auto result = verifier.verify(data, bundle);
-  // ASSERT_TRUE(result.has_error());
-
-  // result = verifier.verify_bundle_consistency(log_entry, bundle);
-  // ASSERT_FALSE(result.has_error());
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoInclusionProofTreeSize)
@@ -433,8 +486,14 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofTreeSize)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -446,8 +505,12 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofTreeSize1)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -459,8 +522,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofTreeSize2)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -472,17 +541,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofTreeSize3)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
-
-  // auto &[bundle, data] = log.value();
-
-  // auto result = verifier.verify(data, bundle);
-  // ASSERT_TRUE(result.has_error());
-
-  // result = verifier.verify_bundle_consistency(log_entry, bundle);
-  // ASSERT_FALSE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoInclusionProofRootHash)
@@ -493,8 +555,12 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofRootHash)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -506,8 +572,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofRootHash)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -517,8 +589,12 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionProofHashes)
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0/inclusionProof", [](boost::json::object &obj) { obj.erase(obj.find("hashes")); });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -531,8 +607,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofHashes)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -544,8 +626,12 @@ TEST_F(SigstoreTest, ValidateLog_EmptyInclusionProofHashes)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -569,8 +655,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpoint1)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -594,8 +686,12 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpoint2)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -623,8 +719,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointInconsistentTree
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -652,8 +754,12 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointTreeSizeWrongTyp
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto context = sigstore::Context::instance_default();
+  auto &[bundle_json, data] = log.value();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -681,8 +787,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointNoBody)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -710,8 +822,12 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointNoSeparator)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -739,9 +855,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointNoNewLine)
     });
   });
 
-  auto &[bundle, data] = log.value();
+  auto &[bundle_json, data] = log.value();
 
-  auto result = verifier.verify_blob(data, bundle);
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -769,8 +890,12 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCheckpointWrongSignature)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -784,9 +909,11 @@ TEST_F(SigstoreTest, ValidateLog_NoMediaType)
     auto &obj = json_val.as_object();
     obj.erase(obj.find("mediaType"));
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_InvalidMediaType)
@@ -795,9 +922,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidMediaType)
     auto &obj = json_val.as_object();
     obj.find("mediaType")->value() = "invalid/media-type";
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 // =============================================================================
@@ -810,9 +938,11 @@ TEST_F(SigstoreTest, ValidateLog_NoCertificate)
     auto &obj = json_val.at_pointer("/verificationMaterial").as_object();
     obj.erase(obj.find("certificate"));
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoCertificateRawBytes)
@@ -821,9 +951,10 @@ TEST_F(SigstoreTest, ValidateLog_NoCertificateRawBytes)
     auto &obj = json_val.at_pointer("/verificationMaterial/certificate").as_object();
     obj.erase(obj.find("rawBytes"));
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_InvalidCertificateRawBytes)
@@ -832,9 +963,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidCertificateRawBytes)
     auto &obj = json_val.at_pointer("/verificationMaterial/certificate").as_object();
     obj.find("rawBytes")->value() = "invalid-certificate-data";
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 // =============================================================================
@@ -847,9 +979,10 @@ TEST_F(SigstoreTest, ValidateLog_NoTlogEntries)
     auto &obj = json_val.at_pointer("/verificationMaterial").as_object();
     obj.erase(obj.find("tlogEntries"));
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_EmptyTlogEntries)
@@ -858,9 +991,10 @@ TEST_F(SigstoreTest, ValidateLog_EmptyTlogEntries)
     auto &obj = json_val.at_pointer("/verificationMaterial").as_object();
     obj.find("tlogEntries")->value() = boost::json::array{};
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoTlogEntryLogIndex)
@@ -868,8 +1002,12 @@ TEST_F(SigstoreTest, ValidateLog_NoTlogEntryLogIndex)
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.erase(obj.find("logIndex")); });
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -880,9 +1018,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidTlogEntryLogIndex)
       obj.find("logIndex")->value() = "invalid-log-index";
     });
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoLogId)
@@ -905,8 +1044,12 @@ TEST_F(SigstoreTest, ValidateLog_NoLogId)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -920,9 +1063,10 @@ TEST_F(SigstoreTest, ValidateLog_LogIdWrongType)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoLogIdKeyId)
@@ -932,8 +1076,12 @@ TEST_F(SigstoreTest, ValidateLog_NoLogIdKeyId)
     obj.erase(obj.find("keyId"));
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -944,8 +1092,13 @@ TEST_F(SigstoreTest, ValidateLog_InvalidLogIdKeyId)
     obj.find("keyId")->value() = "invalid-key-id";
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -955,9 +1108,12 @@ TEST_F(SigstoreTest, ValidateLog_NoKindVersion)
     auto &obj = json_val.at_pointer("/verificationMaterial/tlogEntries/0").as_object();
     obj.erase(obj.find("kindVersion"));
   });
-  auto &[bundle, data] = log.value();
-
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -968,9 +1124,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidKindVersionWrongType)
     o.erase(o.find("kindVersion"));
     o["kindVersion"] = "invalid-kind-version-type";
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoKindVersionKind)
@@ -979,9 +1136,12 @@ TEST_F(SigstoreTest, ValidateLog_NoKindVersionKind)
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0/kindVersion").as_object();
     o.erase(o.find("kind"));
   });
-  auto &[bundle, data] = log.value();
-
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -991,9 +1151,13 @@ TEST_F(SigstoreTest, ValidateLog_InvalidKindVersionKind)
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0/kindVersion").as_object();
     o.find("kind")->value() = "invalid-kind";
   });
-  auto &[bundle, data] = log.value();
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
 
-  auto result = verifier.verify_blob(data, bundle);
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1003,9 +1167,12 @@ TEST_F(SigstoreTest, ValidateLog_NoKindVersionVersion)
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0/kindVersion").as_object();
     o.erase(o.find("version"));
   });
-  auto &[bundle, data] = log.value();
-
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1015,9 +1182,13 @@ TEST_F(SigstoreTest, ValidateLog_InvalidKindVersionVersion)
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0/kindVersion").as_object();
     o.find("version")->value() = "invalid-version";
   });
-  auto &[bundle, data] = log.value();
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
 
-  auto result = verifier.verify_blob(data, bundle);
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1027,8 +1198,12 @@ TEST_F(SigstoreTest, ValidateLog_NoIntegratedTime)
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.erase(obj.find("integratedTime")); });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1039,9 +1214,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidIntegratedTime1)
       obj.find("integratedTime")->value() = "invalid-time";
     });
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_InvalidIntegratedTime2)
@@ -1049,9 +1225,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidIntegratedTime2)
   auto log = load_standard_bundle([this](boost::json::value &json_val) {
     apply_json_patch(json_val, "/verificationMaterial/tlogEntries/0", [](boost::json::object &obj) { obj.find("integratedTime")->value() = true; });
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_IntegratedTimeOutOfRange)
@@ -1062,8 +1239,13 @@ TEST_F(SigstoreTest, ValidateLog_IntegratedTimeOutOfRange)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1077,8 +1259,12 @@ TEST_F(SigstoreTest, ValidateLog_IntegratedTimeFuture)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1088,8 +1274,13 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionPromise)
     auto &o = json_val.at_pointer("/verificationMaterial/tlogEntries/0").as_object();
     o.erase(o.find("inclusionPromise"));
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1100,9 +1291,10 @@ TEST_F(SigstoreTest, ValidateLog_InclusionPromiseWrongType)
     o.erase(o.find("inclusionPromise"));
     o["inclusionPromise"] = "invalid-inclusion-promise-type";
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoInclusionPromiseSignedEntryTimestamp)
@@ -1113,8 +1305,13 @@ TEST_F(SigstoreTest, ValidateLog_NoInclusionPromiseSignedEntryTimestamp)
     });
   });
 
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+
+  auto result = bundle->verify(data);
   ASSERT_TRUE(result.has_error());
 }
 
@@ -1125,9 +1322,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionPromiseSignedEntryTimestamp)
       obj.find("signedEntryTimestamp")->value() = "invalid-timestamp";
     });
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 // =============================================================================
@@ -1140,9 +1338,10 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageSignature)
     auto &o = json_val.as_object();
     o.erase(o.find("messageSignature"));
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoMessageDigest)
@@ -1152,9 +1351,12 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageDigest)
     o.erase(o.find("messageDigest"));
   });
 
-  auto &[bundle, data] = log.value();
-
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1165,9 +1367,13 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageDigestAlgorithm)
     o.erase(o.find("algorithm"));
   });
 
-  auto &[bundle, data] = log.value();
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
 
-  auto result = verifier.verify_blob(data, bundle);
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1177,9 +1383,10 @@ TEST_F(SigstoreTest, ValidateLog_InvalidMessageDigestAlgorithm)
     auto &o = json_val.at_pointer("/messageSignature/messageDigest").as_object();
     o.find("algorithm")->value() = "INVALID_ALGO";
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_NoMessageDigestDigest)
@@ -1190,9 +1397,13 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageDigestDigest)
   });
   ASSERT_FALSE(log.has_error());
 
-  auto &[bundle, data] = log.value();
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
 
-  auto result = verifier.verify_blob(data, bundle);
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1204,9 +1415,12 @@ TEST_F(SigstoreTest, ValidateLog_InvalidMessageDigestDigest)
   });
   ASSERT_FALSE(log.has_error());
 
-  auto &[bundle, data] = log.value();
-
-  auto result = verifier.verify_blob(data, bundle);
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_FALSE(bundle_result.has_error()) << "Failed to create bundle: " << bundle_result.error().message();
+  auto bundle = bundle_result.value();
+  auto result = bundle->verify(data);
   ASSERT_FALSE(result.has_error());
 }
 
@@ -1216,9 +1430,11 @@ TEST_F(SigstoreTest, ValidateLog_NoMessageSignatureSignature)
     auto &o = json_val.at_pointer("/messageSignature").as_object();
     o.erase(o.find("signature"));
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
+  auto &[bundle_json, data] = log.value();
+
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }
 
 TEST_F(SigstoreTest, ValidateLog_InvalidMessageSignatureSignature)
@@ -1227,245 +1443,8 @@ TEST_F(SigstoreTest, ValidateLog_InvalidMessageSignatureSignature)
     auto &o = json_val.at_pointer("/messageSignature").as_object();
     o.find("signature")->value() = "invalid-signature";
   });
-  auto &[bundle, data] = log.value();
-  auto result = verifier.verify_blob(data, bundle);
-  ASSERT_TRUE(result.has_error());
-}
-
-// =============================================================================
-// Identity Management Tests
-// =============================================================================
-
-TEST_F(SigstoreTest, AddExpectedIdentity_SingleIdentity)
-{
-  // Test adding a single expected identity
-  EXPECT_NO_THROW({ verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth"); });
-}
-
-TEST_F(SigstoreTest, AddExpectedIdentity_MultipleIdentities)
-{
-  // Test adding multiple expected identities
-  EXPECT_NO_THROW({
-    verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-    verifier.add_expected_identity("bob@company.com", "https://accounts.google.com");
-    verifier.add_expected_identity("charlie@org.com", "https://gitlab.com");
-  });
-}
-
-TEST_F(SigstoreTest, AddExpectedIdentity_DuplicateIdentities)
-{
-  // Test adding duplicate identities (should be allowed)
-  EXPECT_NO_THROW({
-    verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-    verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-  });
-}
-
-TEST_F(SigstoreTest, AddExpectedIdentity_EmptyEmail)
-{
-  // Test adding identity with empty email
-  EXPECT_NO_THROW({ verifier.add_expected_identity("", "https://github.com/login/oauth"); });
-}
-
-TEST_F(SigstoreTest, AddExpectedIdentity_EmptyIssuer)
-{
-  // Test adding identity with empty issuer
-  EXPECT_NO_THROW({ verifier.add_expected_identity("alice@example.com", ""); });
-}
-
-TEST_F(SigstoreTest, AddExpectedIdentity_BothEmpty)
-{
-  // Test adding identity with both empty email and issuer
-  EXPECT_NO_THROW({ verifier.add_expected_identity("", ""); });
-}
-
-TEST_F(SigstoreTest, RemoveExpectedIdentity_ExistingIdentity)
-{
-  // Add an identity then remove it
-  verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-
-  EXPECT_NO_THROW({ verifier.remove_expected_identity("alice@example.com", "https://github.com/login/oauth"); });
-}
-
-TEST_F(SigstoreTest, RemoveExpectedIdentity_NonExistentIdentity)
-{
-  // Try to remove an identity that was never added
-  EXPECT_NO_THROW({ verifier.remove_expected_identity("nonexistent@example.com", "https://github.com/login/oauth"); });
-}
-
-TEST_F(SigstoreTest, RemoveExpectedIdentity_PartialMatch)
-{
-  // Add an identity and try to remove with partial match
-  verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-
-  // Remove with wrong email should not affect the stored identity
-  EXPECT_NO_THROW({ verifier.remove_expected_identity("wrong@example.com", "https://github.com/login/oauth"); });
-
-  // Remove with wrong issuer should not affect the stored identity
-  EXPECT_NO_THROW({ verifier.remove_expected_identity("alice@example.com", "https://wrong.issuer.com"); });
-}
-
-TEST_F(SigstoreTest, RemoveExpectedIdentity_MultipleIdentities)
-{
-  // Add multiple identities and remove one
-  verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-  verifier.add_expected_identity("bob@company.com", "https://accounts.google.com");
-  verifier.add_expected_identity("charlie@org.com", "https://gitlab.com");
-
-  EXPECT_NO_THROW({ verifier.remove_expected_identity("bob@company.com", "https://accounts.google.com"); });
-}
-
-TEST_F(SigstoreTest, ClearExpectedIdentities_EmptyList)
-{
-  // Clear when no identities are stored
-  EXPECT_NO_THROW({ verifier.clear_expected_certificate_identities(); });
-}
-
-TEST_F(SigstoreTest, ClearExpectedIdentities_WithIdentities)
-{
-  // Add identities then clear them
-  verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-  verifier.add_expected_identity("bob@company.com", "https://accounts.google.com");
-
-  EXPECT_NO_THROW({ verifier.clear_expected_certificate_identities(); });
-}
-
-TEST_F(SigstoreTest, ClearExpectedIdentities_MultipleCalls)
-{
-  // Clear multiple times in a row
-  verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-
-  EXPECT_NO_THROW({
-    verifier.clear_expected_certificate_identities();
-    verifier.clear_expected_certificate_identities();
-    verifier.clear_expected_certificate_identities();
-  });
-}
-
-// =============================================================================
-// Identity Management Workflow Tests
-// =============================================================================
-
-TEST_F(SigstoreTest, Workflow_AddRemoveAdd)
-{
-  // Test adding, removing, then adding again
-  const std::string email = "test@example.com";
-  const std::string issuer = "https://github.com/login/oauth";
-
-  EXPECT_NO_THROW({
-    verifier.add_expected_identity(email, issuer);
-    verifier.remove_expected_identity(email, issuer);
-    verifier.add_expected_identity(email, issuer);
-  });
-}
-
-TEST_F(SigstoreTest, Workflow_AddClearAdd)
-{
-  // Test adding, clearing, then adding again
-  EXPECT_NO_THROW({
-    verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-    verifier.add_expected_identity("bob@company.com", "https://accounts.google.com");
-    verifier.clear_expected_certificate_identities();
-    verifier.add_expected_identity("charlie@org.com", "https://gitlab.com");
-  });
-}
-
-TEST_F(SigstoreTest, Workflow_MixedOperations)
-{
-  // Test a complex workflow with mixed operations
-  EXPECT_NO_THROW({
-    // Add initial identities
-    verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-    verifier.add_expected_identity("bob@company.com", "https://accounts.google.com");
-    verifier.add_expected_identity("charlie@org.com", "https://gitlab.com");
-
-    // Remove one
-    verifier.remove_expected_identity("bob@company.com", "https://accounts.google.com");
-
-    // Add another
-    verifier.add_expected_identity("david@startup.com", "https://oauth2.sigstore.dev/auth");
-
-    // Remove non-existent
-    verifier.remove_expected_identity("nonexistent@example.com", "https://fake.com");
-
-    // Clear all
-    verifier.clear_expected_certificate_identities();
-
-    // Add new ones
-    verifier.add_expected_identity("eve@newcompany.com", "https://github.com/login/oauth");
-  });
-}
-
-// =============================================================================
-// Edge Case Tests
-// =============================================================================
-
-TEST_F(SigstoreTest, EdgeCase_VeryLongEmail)
-{
-  // Test with very long email address
-  std::string long_email(1000, 'a');
-  long_email += "@verylongdomainname.com";
-
-  EXPECT_NO_THROW({
-    verifier.add_expected_identity(long_email, "https://github.com/login/oauth");
-    verifier.remove_expected_identity(long_email, "https://github.com/login/oauth");
-  });
-}
-
-TEST_F(SigstoreTest, EdgeCase_VeryLongIssuer)
-{
-  // Test with very long issuer URL
-  std::string long_issuer = "https://";
-  long_issuer += std::string(1000, 'a');
-  long_issuer += ".com/oauth";
-
-  EXPECT_NO_THROW({
-    verifier.add_expected_identity("test@example.com", long_issuer);
-    verifier.remove_expected_identity("test@example.com", long_issuer);
-  });
-}
-
-TEST_F(SigstoreTest, EdgeCase_SpecialCharacters)
-{
-  // Test with special characters in email and issuer
-  const std::string special_email = "test+user@sub-domain.example.com";
-  const std::string special_issuer = "https://oauth-server.example.com/auth?param=value";
-
-  EXPECT_NO_THROW({
-    verifier.add_expected_identity(special_email, special_issuer);
-    verifier.remove_expected_identity(special_email, special_issuer);
-  });
-}
-
-TEST_F(SigstoreTest, EdgeCase_UnicodeCharacters)
-{
-  // Test with Unicode characters
-  const std::string unicode_email = "tëst@ëxämplë.com";
-  const std::string unicode_issuer = "https://ëxämplë.com/oauth";
-
-  EXPECT_NO_THROW({
-    verifier.add_expected_identity(unicode_email, unicode_issuer);
-    verifier.remove_expected_identity(unicode_email, unicode_issuer);
-  });
-}
-
-// =============================================================================
-// Multiple Verifier Instances Tests
-// =============================================================================
-
-TEST_F(SigstoreTest, MultipleVerifiers_IndependentState)
-{
-  // Test that multiple verifier instances maintain independent state
-  SigstoreVerifier verifier2;
-  [[maybe_unused]] auto result = verifier2.load_embedded_fulcio_ca_certificates();
-
-  verifier.add_expected_identity("alice@example.com", "https://github.com/login/oauth");
-  verifier2.add_expected_identity("bob@company.com", "https://accounts.google.com");
-
-  // Each verifier should maintain its own state independently
-  // This is verified by the fact that operations don't throw exceptions
-  EXPECT_NO_THROW({
-    verifier.remove_expected_identity("bob@company.com", "https://accounts.google.com");       // Should not find it
-    verifier2.remove_expected_identity("alice@example.com", "https://github.com/login/oauth"); // Should not find it
-  });
+  auto &[bundle_json, data] = log.value();
+  auto context = sigstore::Context::instance_default();
+  auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+  ASSERT_TRUE(bundle_result.has_error());
 }

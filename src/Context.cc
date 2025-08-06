@@ -18,20 +18,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include "sigstore/SigstoreErrors.hh"
+#include "sigstore/Context.hh"
+
+#include "ContextImpl.hh"
 
 namespace sigstore
 {
-
-  const std::error_category &sigstore_error_category()
+  std::shared_ptr<Context> Context::instance()
   {
-    static SigstoreErrorCategory category;
-    return category;
+    return std::make_shared<ContextImpl>();
   }
 
-  std::error_code make_error_code(SigstoreError e)
+  std::shared_ptr<Context> Context::instance_default()
   {
-    return {static_cast<int>(e), sigstore_error_category()};
+    auto context = Context::instance();
+    // TODO:
+    [[maybe_unused]] auto result = context->load_embedded_fulcio_ca_certificates();
+    return context;
   }
 
 } // namespace sigstore

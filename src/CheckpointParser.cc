@@ -20,14 +20,14 @@
 
 #include "CheckpointParser.hh"
 
+#include <algorithm>
+#include <cctype>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
-#include <algorithm>
-#include <cctype>
 
-#include "sigstore/SigstoreErrors.hh"
+#include "sigstore/Errors.hh"
 
 namespace sigstore
 {

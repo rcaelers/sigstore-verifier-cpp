@@ -1,6 +1,8 @@
-#include <gtest/gtest.h>
 #include "CheckpointParser.hh"
-#include <sigstore_rekor.pb.h>
+
+#include <gtest/gtest.h>
+
+#include "sigstore_rekor.pb.h"
 
 using namespace sigstore;
 

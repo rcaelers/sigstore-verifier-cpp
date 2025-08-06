@@ -21,10 +21,10 @@
 #ifndef CERTIFICATE_STORE_HH
 #define CERTIFICATE_STORE_HH
 
-#include <boost/json.hpp>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
+#include <boost/json.hpp>
 #include <boost/json/array.hpp>
 #include <boost/outcome/std_result.hpp>
 #include <openssl/x509.h>

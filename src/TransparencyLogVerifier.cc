@@ -20,33 +20,29 @@
 
 #include "TransparencyLogVerifier.hh"
 
-#include <fmt/format.h>
-#include <algorithm>
-#include <memory>
 #include <cctype>
+#include <memory>
 #include <boost/json.hpp>
-#include <openssl/evp.h>
 #include <fmt/chrono.h>
+#include <fmt/format.h>
+#include <openssl/evp.h>
 
-#include "BundleHelper.hh"
 #include "Base64.hh"
-#include "Certificate.hh"
-#include "PublicKey.hh"
-#include "MerkleTreeValidator.hh"
-#include "CheckpointParser.hh"
+#include "BundleImpl.hh"
 #include "CanonicalBodyParser.hh"
-
-#include "sigstore/SigstoreErrors.hh"
-
-#include "sigstore_rekor.pb.h"
+#include "Certificate.hh"
+#include "CheckpointParser.hh"
+#include "MerkleTreeValidator.hh"
+#include "PublicKey.hh"
 #include "embedded_rekor_pubkey.h"
+#include "sigstore/Errors.hh"
+#include "sigstore_rekor.pb.h"
 
 namespace outcome = boost::outcome_v2;
 
 namespace sigstore
 {
-  TransparencyLogVerifier::TransparencyLogVerifier(VerificationConfig config)
-    : config_(std::move(config))
+  TransparencyLogVerifier::TransparencyLogVerifier()
   {
     merkle_validator_ = std::make_unique<MerkleTreeValidator>();
 
@@ -73,8 +69,7 @@ namespace sigstore
   }
 
   outcome::std_result<void> TransparencyLogVerifier::verify_transparency_log(dev::sigstore::rekor::v1::TransparencyLogEntry entry,
-                                                                            std::shared_ptr<Certificate> certificate,
-                                                                            const std::vector<std::pair<std::string, std::string>> &expected_identities)
+                                                                             std::shared_ptr<Certificate> certificate)
   {
     logger_->debug("Verifying transparency log entry with log index: {}", entry.log_index());
 
@@ -94,12 +89,6 @@ namespace sigstore
     if (!integrated_time_valid)
       {
         return integrated_time_valid.error();
-      }
-
-    auto extensions_valid = verify_certificate_extensions(certificate, expected_identities);
-    if (!extensions_valid)
-      {
-        return extensions_valid.error();
       }
 
     auto key_usage_valid = certificate->verify_key_usage();
@@ -389,83 +378,11 @@ namespace sigstore
   }
 
   // =============================================================================
-  // Certificates
-  // =============================================================================
-
-  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_extensions(const std::shared_ptr<Certificate> &certificate,
-                                                                                   const std::vector<std::pair<std::string, std::string>> &expected_identities)
-  {
-    try
-      {
-        logger_->debug("Verifying certificate extensions");
-
-        // Verify Subject Alternative Name (email)
-        std::string subject_email = certificate->subject_email();
-        if (subject_email.empty())
-          {
-            logger_->error("Certificate does not contain a subject email in SAN extension");
-            return SigstoreError::InvalidCertificate;
-          }
-        logger_->debug("Found subject email: {}", subject_email);
-
-        // Verify OIDC issuer extension
-        std::string oidc_issuer = certificate->oidc_issuer();
-        if (oidc_issuer.empty())
-          {
-            logger_->error("Certificate does not contain OIDC issuer extension");
-            return SigstoreError::InvalidCertificate;
-          }
-        logger_->debug("Found OIDC issuer: {}", oidc_issuer);
-
-        // If expected identities are provided, validate against them
-        if (!expected_identities.empty())
-          {
-            bool identity_match_found = false;
-            for (const auto &[expected_email, expected_issuer] : expected_identities)
-              {
-                if (subject_email == expected_email && oidc_issuer == expected_issuer)
-                  {
-                    identity_match_found = true;
-                    logger_->debug("Certificate identity matches expected: email='{}', issuer='{}'", expected_email, expected_issuer);
-                    break;
-                  }
-              }
-
-            if (!identity_match_found)
-              {
-                logger_->error("Certificate identity does not match any expected identities: email='{}', issuer='{}'", subject_email, oidc_issuer);
-                return SigstoreError::InvalidCertificate;
-              }
-          }
-
-        // Validate that the OIDC issuer is from a trusted source (e.g., GitHub, GitLab, etc.)
-        const std::vector<std::string> trusted_issuers = {"https://github.com/login/oauth",
-                                                          "https://gitlab.com",
-                                                          "https://accounts.google.com",
-                                                          "https://oauth2.sigstore.dev/auth"};
-
-        bool issuer_trusted = std::ranges::find(trusted_issuers, oidc_issuer) != trusted_issuers.end();
-        if (!issuer_trusted)
-          {
-            logger_->warn("OIDC issuer '{}' is not in the list of trusted issuers", oidc_issuer);
-          }
-
-        logger_->debug("Certificate extensions validation successful");
-        return outcome::success();
-      }
-    catch (const std::exception &e)
-      {
-        logger_->error("Error during certificate extensions verification: {}", e.what());
-        return SigstoreError::InvalidCertificate;
-      }
-  }
-
-  // =============================================================================
   // Bundle Consistency Verification
   // =============================================================================
 
   outcome::std_result<void> TransparencyLogVerifier::verify_bundle_consistency(const dev::sigstore::rekor::v1::TransparencyLogEntry &entry,
-                                                                               const dev::sigstore::bundle::v1::Bundle &bundle)
+                                                                               std::shared_ptr<BundleImpl> bundle)
   {
     try
       {
@@ -476,12 +393,13 @@ namespace sigstore
             logger_->error("Cannot verify bundle consistency without body data");
             return SigstoreError::InvalidTransparencyLog;
           }
-        if (!bundle.has_verification_material())
+        auto raw_bundle = bundle->get_bundle();
+        if (!raw_bundle.has_verification_material())
           {
             logger_->error("Bundle does not contain verification material");
             return SigstoreError::InvalidTransparencyLog;
           }
-        if (!bundle.has_message_signature())
+        if (!raw_bundle.has_message_signature())
           {
             logger_->error("Bundle does not contain message signature");
             return SigstoreError::InvalidTransparencyLog;
@@ -500,9 +418,8 @@ namespace sigstore
           [bundle, body_entry, entry, this](auto &&spec) -> outcome::std_result<void> {
             using T = std::decay_t<decltype(spec)>;
 
-            BundleHelper bundle_helper(bundle);
-            auto bundle_certificate = bundle_helper.get_certificate();
-            auto bundle_message_digest_opt = bundle_helper.get_message_digest();
+            auto bundle_certificate = bundle->get_certificate();
+            auto bundle_message_digest_opt = bundle->get_message_digest();
 
             if (body_entry.kind != entry.kind_version().kind())
               {
@@ -519,9 +436,9 @@ namespace sigstore
 
             if constexpr (std::is_same_v<T, HashedRekord>)
               {
-                auto signature_valid = verify_signature_consistency(spec, bundle_helper);
+                auto signature_valid = verify_signature_consistency(spec, bundle);
                 auto certificate_valid = verify_certificate_consistency(spec, bundle_certificate);
-                auto hash_valid = bundle_message_digest_opt.has_value() ? verify_hash_consistency(spec, bundle_helper) : outcome::success();
+                auto hash_valid = bundle_message_digest_opt.has_value() ? verify_hash_consistency(spec, bundle) : outcome::success();
                 if (signature_valid && certificate_valid && hash_valid)
                   {
                     logger_->debug("Bundle consistency verification successful");
@@ -544,12 +461,12 @@ namespace sigstore
       }
   }
 
-  outcome::std_result<void> TransparencyLogVerifier::verify_signature_consistency(const HashedRekord &rekord, const BundleHelper &bundle_helper)
+  outcome::std_result<void> TransparencyLogVerifier::verify_signature_consistency(const HashedRekord &rekord, std::shared_ptr<BundleImpl> bundle)
   {
-    if (rekord.signature != bundle_helper.get_signature())
+    if (rekord.signature != bundle->get_signature())
       {
         logger_->error("Signature mismatch between bundle and transparency log");
-        logger_->debug("Bundle signature: {}", bundle_helper.get_signature());
+        logger_->debug("Bundle signature: {}", bundle->get_signature());
         logger_->debug("TLog signature:  {}", rekord.signature);
         return SigstoreError::InvalidTransparencyLog;
       }
@@ -558,7 +475,8 @@ namespace sigstore
     return outcome::success();
   }
 
-  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_consistency(const HashedRekord &rekord, const std::shared_ptr<Certificate> bundle_certificate)
+  outcome::std_result<void> TransparencyLogVerifier::verify_certificate_consistency(const HashedRekord &rekord,
+                                                                                    const std::shared_ptr<Certificate> bundle_certificate)
   {
     std::string tlog_certificate_pem = rekord.public_key;
 
@@ -579,7 +497,7 @@ namespace sigstore
     return outcome::success();
   }
 
-  outcome::std_result<void> TransparencyLogVerifier::verify_hash_consistency(const HashedRekord &rekord, const BundleHelper &bundle_helper)
+  outcome::std_result<void> TransparencyLogVerifier::verify_hash_consistency(const HashedRekord &rekord, std::shared_ptr<BundleImpl> bundle)
   {
     std::string tlog_hash_hex = rekord.hash_value;
 
@@ -592,11 +510,11 @@ namespace sigstore
         tlog_hash_binary.push_back(static_cast<char>(byte));
       }
 
-    if (bundle_helper.get_message_digest().has_value() && bundle_helper.get_message_digest().value() != tlog_hash_binary)
+    if (bundle->get_message_digest().has_value() && bundle->get_message_digest().value() != tlog_hash_binary)
       {
         logger_->error("Hash mismatch between bundle and transparency log");
 
-        auto bundle_hash_b64_result = Base64::encode(bundle_helper.get_message_digest().value());
+        auto bundle_hash_b64_result = Base64::encode(bundle->get_message_digest().value());
         auto tlog_hash_b64_result = Base64::encode(tlog_hash_binary);
 
         if (bundle_hash_b64_result.has_value())
@@ -619,10 +537,10 @@ namespace sigstore
         return SigstoreError::InvalidTransparencyLog;
       }
 
-    if (bundle_helper.get_algorithm().has_value() && bundle_helper.get_algorithm().value() != rekord.hash_algorithm)
+    if (bundle->get_algorithm().has_value() && bundle->get_algorithm().value() != rekord.hash_algorithm)
       {
         logger_->error("Hash algorithm mismatch between bundle and transparency log");
-        logger_->debug("Bundle hash algorithm: {}", bundle_helper.get_algorithm().value());
+        logger_->debug("Bundle hash algorithm: {}", bundle->get_algorithm().value());
         logger_->debug("TLog hash algorithm:   {}", rekord.hash_algorithm);
         return SigstoreError::InvalidTransparencyLog;
       }
