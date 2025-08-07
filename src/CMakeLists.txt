@@ -61,7 +61,7 @@ protobuf_generate(
     PROTOS   ${GOOGLEAPIS_PROTO_FILES}
 )
 
-add_library(sigstore OBJECT)
+add_library(sigstore SHARED)
 
 target_sources(sigstore PRIVATE
   Base64.cc
@@ -89,26 +89,37 @@ target_sources(sigstore PRIVATE
   ${embedded_rekor_pubkey_HEADER}
 )
 
-target_link_libraries(sigstore PUBLIC protobuf::libprotobuf absl::base absl::status absl::strings)
+target_link_libraries(sigstore PUBLIC protobuf::libprotobuf)
 target_link_libraries(sigstore PRIVATE spdlog::spdlog OpenSSL::SSL OpenSSL::Crypto Boost::json)
 
 target_include_directories(
   sigstore
   PRIVATE
   ${PROJECT_SOURCE_DIR}/src
-  ${PROJECT_SOURCE_DIR}/include
-  ${boosturl_SOURCE_DIR}/include
   PUBLIC
-  ${PROJECT_SOURCE_DIR}/include
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  ${boosturl_SOURCE_DIR}/include
 )
 
 target_include_directories(
   sigstore
   SYSTEM  # Treat the following includes as system headers (suppresses warnings)
-  PUBLIC # TODO: should be private
+  PUBLIC
   $<BUILD_INTERFACE:${GENERATED_DIR}>
+  PRIVATE
   $<BUILD_INTERFACE:${SIGSTORE_PROTO_DIR}>
   $<BUILD_INTERFACE:${GOOGLEAPIS_PROTO_DIR}>
 )
 
 target_code_coverage(sigstore ALL AUTO)
+
+install(TARGETS sigstore
+  EXPORT ${PROJECT_NAME}Targets
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  )
+
+install(DIRECTORY ${GENERATED_DIR}/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sigstore/
+        FILES_MATCHING PATTERN "*.h")
