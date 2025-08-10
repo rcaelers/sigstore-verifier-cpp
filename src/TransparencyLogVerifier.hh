@@ -34,7 +34,6 @@
 #include "MerkleTreeValidator.hh"
 #include "PublicKey.hh"
 #include "RFC6962Hasher.hh"
-#include "sigstore_bundle.pb.h"
 #include "sigstore_rekor.pb.h"
 
 namespace outcome = boost::outcome_v2;
