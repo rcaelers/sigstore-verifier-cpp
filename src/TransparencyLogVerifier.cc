@@ -71,7 +71,7 @@ namespace sigstore
   outcome::std_result<void> TransparencyLogVerifier::verify_transparency_log(dev::sigstore::rekor::v1::TransparencyLogEntry entry,
                                                                              std::shared_ptr<Certificate> certificate)
   {
-    logger_->debug("Verifying transparency log entry with log index: {}", entry.log_index());
+    logger_->info("Verifying transparency log entry with log index: {}", entry.log_index());
 
     auto inclusion_valid = verify_inclusion_proof(entry);
     if (!inclusion_valid)
@@ -96,7 +96,7 @@ namespace sigstore
       {
         return key_usage_valid.error();
       }
-    logger_->debug("Certificate key usage validation successful");
+    logger_->info("Transparency log entry verified successfully");
     return outcome::success();
   }
 
@@ -168,9 +168,6 @@ namespace sigstore
                                                                        const std::string &expected_root_hash,
                                                                        int64_t expected_tree_size)
   {
-    logger_->debug("Verifying checkpoint using CheckpointParser");
-
-    // Use CheckpointParser to parse the checkpoint from protobuf
     CheckpointParser parser;
     auto parsed_result = parser.parse_from_protobuf(checkpoint);
     if (!parsed_result)
@@ -333,10 +330,11 @@ namespace sigstore
     auto verify_result = rekor_public_key_->verify_signature(canonicalized_payload, signature_data);
     if (!verify_result)
       {
-        logger_->warn("Signed entry timestamp verification failed: {}", verify_result.error().message());
+        logger_->error("Signed entry timestamp verification failed: {}", verify_result.error().message());
         return SigstoreError::InvalidTransparencyLog;
       }
 
+    logger_->debug("Signed entry timestamp verification successful");
     return outcome::success();
   }
 
@@ -367,7 +365,7 @@ namespace sigstore
 
     if (integrated_time > current_time + MAX_CLOCK_SKEW)
       {
-        logger_->warn("Integrated time {} is too far in the future (current: {})",
+        logger_->error("Integrated time {} is too far in the future (current: {})",
                       integrated_time_seconds,
                       std::chrono::system_clock::to_time_t(current_time));
         return SigstoreError::InvalidCertificate;
@@ -386,7 +384,7 @@ namespace sigstore
   {
     try
       {
-        logger_->debug("Verifying bundle consistency with transparency log entry");
+        logger_->info("Verifying bundle consistency with transparency log entry");
 
         if (entry.canonicalized_body().empty())
           {
@@ -441,7 +439,7 @@ namespace sigstore
                 auto hash_valid = bundle_message_digest_opt.has_value() ? verify_hash_consistency(spec, bundle) : outcome::success();
                 if (signature_valid && certificate_valid && hash_valid)
                   {
-                    logger_->debug("Bundle consistency verification successful");
+                    logger_->info("Bundle consistency verification successful");
                     return outcome::success();
                   }
                 return SigstoreError::InvalidTransparencyLog;

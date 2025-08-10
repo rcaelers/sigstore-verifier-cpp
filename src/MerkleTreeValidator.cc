@@ -119,7 +119,7 @@ namespace sigstore
     std::string current_hash = leaf_hash;
     for (int i = 0; i < proof.size(); ++i)
       {
-        logger_->debug("Step {}: proof={}", i, proof[i]);
+        logger_->debug("Step {}: proof={}", i, binary_to_hex_preview(proof[i]));
         std::string sibling_hash = proof[i];
         logger_->debug("Step {}: leaf_index={}, sibling_hash={}", i, leaf_index, binary_to_hex_preview(sibling_hash));
 
