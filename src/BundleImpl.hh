@@ -53,7 +53,6 @@ namespace sigstore
 
     outcome::std_result<void> verify(const std::string_view &data) override;
     outcome::std_result<void> verify_signature(const std::string_view &data) const override;
-    outcome::std_result<void> verify_certificate_chain() const override;
     outcome::std_result<void> verify_transparency_log_offline() const override;
 
     std::shared_ptr<Certificate> get_certificate() const;

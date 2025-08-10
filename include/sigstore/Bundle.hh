@@ -109,7 +109,6 @@ namespace sigstore
     virtual outcome::std_result<void> verify(const std::string_view &data) = 0;
 
     virtual outcome::std_result<void> verify_signature(const std::string_view &data) const = 0;
-    virtual outcome::std_result<void> verify_certificate_chain() const = 0;
     virtual outcome::std_result<void> verify_transparency_log_offline() const = 0;
 
     /**

@@ -219,13 +219,6 @@ namespace sigstore
         return verify_result.error();
       }
 
-    auto chain_result = verify_certificate_chain();
-    if (!chain_result)
-      {
-        logger_->error("Certificate chain verification failed: {}", chain_result.error().message());
-        return chain_result.error();
-      }
-
     auto log_result = verify_transparency_log_offline();
     if (!log_result)
       {
@@ -239,19 +232,20 @@ namespace sigstore
   outcome::std_result<void> BundleImpl::verify_signature(const std::string_view &data) const
   {
     auto certificate = get_certificate();
-    const auto &signature = get_signature();
+
+    auto chain_result = context_->get_certificate_store()->verify_certificate_chain(certificate);
+    if (!chain_result)
+      {
+        logger_->error("Certificate chain verification failed: {}", chain_result.error().message());
+        return chain_result.error();
+      }
 
     std::vector<uint8_t> signature_bytes;
+    const auto &signature = get_signature();
     signature_bytes.assign(signature.begin(), signature.end());
 
     std::vector<uint8_t> data_bytes(data.begin(), data.end());
     return certificate->verify_signature(data_bytes, signature_bytes);
-  }
-
-  outcome::std_result<void> BundleImpl::verify_certificate_chain() const
-  {
-    auto cert = get_certificate();
-    return context_->get_certificate_store()->verify_certificate_chain(cert);
   }
 
   outcome::std_result<void> BundleImpl::verify_transparency_log_offline() const
