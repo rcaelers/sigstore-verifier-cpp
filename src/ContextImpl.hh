@@ -57,7 +57,7 @@ namespace sigstore
     std::shared_ptr<CertificateStore> get_certificate_store() const;
 
   private:
-    std::shared_ptr<spdlog::logger> logger_{Logging::create("sigstore")};
+    std::shared_ptr<spdlog::logger> logger_{Logging::create("sigstore:context")};
     std::shared_ptr<CertificateStore> certificate_store_;
     std::string rekor_public_key_;
   };

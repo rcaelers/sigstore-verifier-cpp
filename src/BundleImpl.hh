@@ -70,7 +70,7 @@ namespace sigstore
     int64_t extract_log_index() const;
 
   private:
-    std::shared_ptr<spdlog::logger> logger_{Logging::create("sigstore:bundle_loader")};
+    std::shared_ptr<spdlog::logger> logger_{Logging::create("sigstore:bundle")};
     std::shared_ptr<ContextImpl> context_;
     dev::sigstore::bundle::v1::Bundle internal_bundle_;
     mutable std::shared_ptr<Certificate> certificate_;
