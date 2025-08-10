@@ -238,7 +238,7 @@ namespace sigstore
     const char *error_string = X509_verify_cert_error_string(error);
     logger_->debug("Certificate chain verification failed: {}", error_string);
 
-    return SigstoreError::InvalidCertificate;
+    return SigstoreError::UntrustedCertificate;
   }
 
   void CertificateStore::log_validated_chain(X509_STORE_CTX *cert_ctx)

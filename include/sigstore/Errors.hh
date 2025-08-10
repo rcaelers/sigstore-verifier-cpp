@@ -30,6 +30,7 @@ namespace sigstore
     InvalidBundle = 1,
     InvalidSignature,
     InvalidCertificate,
+    UntrustedCertificate,
     InvalidPublicKey,
     InvalidTransparencyLog,
     InvalidContext,
@@ -56,6 +57,8 @@ namespace sigstore
           return "Invalid signature";
         case SigstoreError::InvalidCertificate:
           return "Invalid certificate";
+        case SigstoreError::UntrustedCertificate:
+          return "Untrusted certificate";
         case SigstoreError::InvalidPublicKey:
           return "Invalid public key";
         case SigstoreError::InvalidTransparencyLog:
