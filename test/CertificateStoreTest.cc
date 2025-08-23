@@ -111,17 +111,17 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     std::string json_array = R"([])";
     auto result = store()->load_trust_bundle(json_array);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_string = R"("not an object")";
     result = store()->load_trust_bundle(json_string);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_number = R"(42)";
     result = store()->load_trust_bundle(json_number);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
   }
 
   TEST_F(CertificateStoreTest, TrustBundleMissingChains)
@@ -129,17 +129,17 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     std::string json_missing_chains = R"({})";
     auto result = store()->load_trust_bundle(json_missing_chains);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_chains_not_array = R"({"chains": "not an array"})";
     result = store()->load_trust_bundle(json_chains_not_array);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_chains_object = R"({"chains": {}})";
     result = store()->load_trust_bundle(json_chains_object);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
   }
 
   TEST_F(CertificateStoreTest, TrustBundleEmptyChains)
@@ -147,7 +147,7 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     std::string json_empty_chains = R"({"chains": []})";
     auto result = store()->load_trust_bundle(json_empty_chains);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
   }
 
   TEST_F(CertificateStoreTest, InvalidChainObjects)
@@ -155,17 +155,17 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     std::string json_chain_not_object = R"({"chains": ["not an object"]})";
     auto result = store()->load_trust_bundle(json_chain_not_object);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_chain_number = R"({"chains": [42]})";
     result = store()->load_trust_bundle(json_chain_number);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_chain_array = R"({"chains": [[]]})";
     result = store()->load_trust_bundle(json_chain_array);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
   }
 
   TEST_F(CertificateStoreTest, ChainMissingCertificates)
@@ -173,17 +173,17 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     std::string json_no_certificates = R"({"chains": [{}]})";
     auto result = store()->load_trust_bundle(json_no_certificates);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_certificates_not_array = R"({"chains": [{"certificates": "not an array"}]})";
     result = store()->load_trust_bundle(json_certificates_not_array);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_certificates_object = R"({"chains": [{"certificates": {}}]})";
     result = store()->load_trust_bundle(json_certificates_object);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
   }
 
   TEST_F(CertificateStoreTest, EmptyCertificatesArray)
@@ -191,7 +191,7 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     std::string json_empty_certificates = R"({"chains": [{"certificates": []}]})";
     auto result = store()->load_trust_bundle(json_empty_certificates);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
   }
 
   TEST_F(CertificateStoreTest, CertificateNotString)
@@ -217,12 +217,12 @@ ZOw4B4QCMB41oC+O1hO15qi1LtQVBmzkXLtWIy6youHR1ksJCMY9imNWVe+pUJQM
     std::string json_invalid_pem = R"({"chains": [{"certificates": ["invalid pem data"]}]})";
     auto result = store()->load_trust_bundle(json_invalid_pem);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
 
     std::string json_malformed_pem = R"({"chains": [{"certificates": ["-----BEGIN CERTIFICATE-----\nmalformed\n-----END CERTIFICATE-----"]}]})";
     result = store()->load_trust_bundle(json_malformed_pem);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
   }
 
   TEST_F(CertificateStoreTest, CertificateVerificationFailure)
@@ -275,7 +275,7 @@ YQ9QE6hWwYOByMUBGPAR3j3sN4V8Xl8Hy4FqFg6YGnC4hVq0OdU6D5dZeR8OKyLa
 
     auto result = store()->load_trust_bundle(json_no_valid_certs);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(SigstoreError::JsonParseError, result.error());
+    EXPECT_EQ(SigstoreError::InvalidCertificate, result.error());
   }
 
   TEST_F(CertificateStoreTest, CertificateVerificationWithLogging)
