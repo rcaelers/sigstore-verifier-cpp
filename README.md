@@ -50,28 +50,46 @@ ctest --output-on-failure
 ### Basic Verification
 
 ```cpp
-#include <sigstore/SigstoreVerifier.hh>
+#include <sigstore/Context.hh>
+#include <sigstore/Bundle.hh>
 #include <iostream>
 #include <fstream>
 
 int main() {
-    // Create verifier instance
-    sigstore::SigstoreVerifier verifier;
+    // Create context instance
+    auto context = sigstore::Context::instance();
 
     // Load embedded Fulcio CA certificates
-    auto load_result = verifier.load_embedded_fulcio_ca_certificates();
+    auto load_result = context->load_embedded_fulcio_ca_certificates();
     if (!load_result) {
         std::cerr << "Failed to load CA certificates: "
                   << load_result.error().message() << std::endl;
         return 1;
     }
 
-    // Read artifact and bundle
+    // Read artifact data
     std::string artifact_data = "Hello, World!";
-    std::string bundle_json = read_bundle_file("artifact.sigstore");
 
-    // Verify the artifact
-    auto result = verifier.verify_blob(artifact_data, bundle_json);
+    // Read bundle file
+    std::ifstream bundle_file("artifact.sigstore");
+    if (!bundle_file.is_open()) {
+        std::cerr << "Failed to open bundle file" << std::endl;
+        return 1;
+    }
+    std::string bundle_json((std::istreambuf_iterator<char>(bundle_file)),
+                           std::istreambuf_iterator<char>());
+    bundle_file.close();
+
+    // Create bundle and verify the artifact
+    auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+    if (!bundle_result) {
+        std::cerr << "Failed to create bundle: "
+                  << bundle_result.error().message() << std::endl;
+        return 1;
+    }
+
+    auto bundle = bundle_result.value();
+    auto result = bundle->verify(artifact_data);
     if (result) {
         std::cout << "Verification successful!" << std::endl;
     } else {
@@ -86,30 +104,32 @@ int main() {
 ### Identity-Constrained Verification
 
 ```cpp
-sigstore::SigstoreVerifier verifier;
-verifier.load_embedded_fulcio_ca_certificates();
+auto context = sigstore::Context::instance();
+context->load_embedded_fulcio_ca_certificates();
 
-// Only accept signatures from specific identities
-verifier.add_expected_identity("user@example.com", "https://github.com/login/oauth");
-verifier.add_expected_identity("user@gmail.com", "https://accounts.google.com");
+// Read bundle file
+std::ifstream bundle_file("artifact.sigstore");
+std::string bundle_json((std::istreambuf_iterator<char>(bundle_file)),
+                       std::istreambuf_iterator<char>());
+bundle_file.close();
 
-auto result = verifier.verify_blob(artifact_data, bundle_json);
-// Verification succeeds only if the certificate matches one of the expected identities
-```
-
-### Custom CA Certificates
-
-```cpp
-sigstore::SigstoreVerifier verifier;
-
-// Load custom CA certificate
-std::string custom_ca = read_pem_file("custom-ca.pem");
-auto ca_result = verifier.add_ca_certificate(custom_ca);
-
-if (ca_result) {
-    // Proceed with verification
-    auto result = verifier.verify_blob(artifact_data, bundle_json);
+auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+if (!bundle_result) {
+    std::cerr << "Failed to create bundle" << std::endl;
+    return 1;
 }
+
+auto bundle = bundle_result.value();
+
+// Get certificate information to check identity
+auto cert_info = bundle->get_certificate_info();
+if (cert_info) {
+    // Check if certificate matches expected identity
+    // Implementation depends on certificate validation requirements
+}
+
+auto result = bundle->verify(artifact_data);
+// Verification succeeds based on the bundle's embedded certificate
 ```
 
 ### Error Handling
@@ -117,13 +137,27 @@ if (ca_result) {
 The library uses `boost::outcome::std_result<T>` for error handling:
 
 ```cpp
-auto result = verifier.verify_blob(data, bundle);
-if (result) {
-    // Success
-    std::cout << "Verification passed" << std::endl;
+auto context = sigstore::Context::instance();
+context->load_embedded_fulcio_ca_certificates();
+
+std::ifstream bundle_file("artifact.sigstore");
+std::string bundle_json((std::istreambuf_iterator<char>(bundle_file)),
+                       std::istreambuf_iterator<char>());
+bundle_file.close();
+
+auto bundle_result = sigstore::Bundle::create(context, bundle_json);
+if (bundle_result) {
+    auto bundle = bundle_result.value();
+    auto result = bundle->verify(data);
+    if (result) {
+        // Success
+        std::cout << "Verification passed" << std::endl;
+    } else {
+        // Error
+        std::cerr << "Error: " << result.error().message() << std::endl;
+    }
 } else {
-    // Error
-    std::cerr << "Error: " << result.error().message() << std::endl;
+    std::cerr << "Bundle creation failed: " << bundle_result.error().message() << std::endl;
 }
 ```
 

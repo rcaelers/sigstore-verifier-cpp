@@ -10,9 +10,9 @@ This file tracks planned improvements and enhancements for the sigstore-verifier
   - [ ] Online retrieval of Fulcio and Rekor public keys
   - [ ] Setting custom Rekor certificates
 - [ ] Improve API granularity
-  - [ ] Bundle verification API
-  - [ ] Artifact verification API
-  - [ ] Transparency log verification API
+  - [X] Bundle verification API
+  - [X] Artifact verification API
+  - [X] Transparency log verification API
 
 ## Low Priority
 
