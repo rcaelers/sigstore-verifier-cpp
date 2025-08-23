@@ -41,27 +41,27 @@ namespace sigstore
     if (ec)
       {
         logger_->error("Failed to parse trust bundle JSON: {}", ec.message());
-        return SigstoreError::JsonParseError;
+        return SigstoreError::InvalidCertificate;
       }
 
     if (!json_val.is_object())
       {
         logger_->error("Trust bundle is not a valid JSON object");
-        return SigstoreError::JsonParseError;
+        return SigstoreError::InvalidCertificate;
       }
 
     const auto &obj = json_val.as_object();
     if (!obj.contains("chains") || !obj.at("chains").is_array())
       {
         logger_->error("Trust bundle does not contain chains array");
-        return SigstoreError::JsonParseError;
+        return SigstoreError::InvalidCertificate;
       }
 
     const auto &chains = obj.at("chains").as_array();
     if (chains.empty())
       {
         logger_->error("Trust bundle chains array is empty");
-        return SigstoreError::JsonParseError;
+        return SigstoreError::InvalidCertificate;
       }
 
     std::vector<std::shared_ptr<Certificate>> intermediate_certificates;
@@ -115,21 +115,21 @@ namespace sigstore
     if (!chain.is_object())
       {
         logger_->error("Skipping invalid chain object");
-        return SigstoreError::JsonParseError;
+        return SigstoreError::InvalidCertificate;
       }
 
     const auto &chain_obj = chain.as_object();
     if (!chain_obj.contains("certificates") || !chain_obj.at("certificates").is_array())
       {
         logger_->error("Chain does not contain certificates array");
-        return SigstoreError::JsonParseError;
+        return SigstoreError::InvalidCertificate;
       }
 
     const auto &certificates = chain_obj.at("certificates").as_array();
     if (certificates.empty())
       {
         logger_->error("Certificates array is empty in chain");
-        return SigstoreError::JsonParseError;
+        return SigstoreError::InvalidCertificate;
       }
 
     for (size_t i = 0; i < certificates.size(); ++i)
@@ -146,7 +146,7 @@ namespace sigstore
         if (!cert)
           {
             logger_->warn("Invalid certificate in trust bundle");
-            return SigstoreError::JsonParseError;
+            return SigstoreError::InvalidCertificate;
           }
 
         bool is_root_ca = (i == certificates.size() - 1) || cert->is_self_signed();
@@ -236,7 +236,7 @@ namespace sigstore
 
     int error = X509_STORE_CTX_get_error(ctx.get());
     const char *error_string = X509_verify_cert_error_string(error);
-    logger_->debug("Certificate chain verification failed: {}", error_string);
+    logger_->error("Certificate chain verification failed: {}", error_string);
 
     return SigstoreError::UntrustedCertificate;
   }

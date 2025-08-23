@@ -55,7 +55,6 @@ namespace sigstore
 
     auto internal_bundle = bundle_result.value();
     auto bundle_impl = std::make_shared<BundleImpl>(context, std::move(internal_bundle));
-
     return std::static_pointer_cast<Bundle>(bundle_impl);
   }
 
@@ -174,7 +173,6 @@ namespace sigstore
 
     const auto &message_digest = message_signature.message_digest();
 
-    // Convert the enum to string
     switch (message_digest.algorithm())
       {
       case dev::sigstore::common::v1::HashAlgorithm::SHA2_256:
