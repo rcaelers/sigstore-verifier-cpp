@@ -86,7 +86,7 @@ if(WIN32)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 endif()
 
-find_package(absl 20250512 CONFIG QUIET)
+find_package(absl 20250814 CONFIG QUIET)
 if(NOT absl_FOUND)
   message(STATUS "Abseil not found, fetching compatible version...")
 
@@ -98,7 +98,7 @@ if(NOT absl_FOUND)
   FetchContent_Declare(
     abseil
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-    GIT_TAG        20250814.1
+    GIT_TAG        20260107.1
     GIT_SHALLOW    TRUE
     OVERRIDE_FIND_PACKAGE
   )
@@ -122,7 +122,7 @@ if(NOT Protobuf_FOUND)
   FetchContent_Declare(
     protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-    GIT_TAG        v32.1
+    GIT_TAG        v34.1
     GIT_SHALLOW    TRUE
     OVERRIDE_FIND_PACKAGE
   )
@@ -160,7 +160,7 @@ if(NOT ${spdlog_FOUND})
       spdlog
       GIT_REPOSITORY https://github.com/gabime/spdlog.git
       GIT_SHALLOW TRUE
-      GIT_TAG v1.15.3
+      GIT_TAG v1.17.0
     )
   set(SPDLOG_BUILD_SHARED ON)
   FetchContent_MakeAvailable(spdlog)
