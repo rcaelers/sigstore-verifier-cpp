@@ -86,7 +86,7 @@ if(WIN32)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 endif()
 
-find_package(absl 20250814 CONFIG QUIET)
+find_package(absl 20260526 CONFIG QUIET)
 if(NOT absl_FOUND)
   message(STATUS "Abseil not found, fetching compatible version...")
 
@@ -98,7 +98,7 @@ if(NOT absl_FOUND)
   FetchContent_Declare(
     abseil
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-    GIT_TAG        20260107.1
+    GIT_TAG        20260526.0
     GIT_SHALLOW    TRUE
     OVERRIDE_FIND_PACKAGE
   )
@@ -107,7 +107,7 @@ if(NOT absl_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_BACKUP}")
 endif()
 
-find_package(Protobuf 6.31.1 QUIET CONFIG)
+find_package(Protobuf 35.1.0 QUIET CONFIG)
 if(NOT Protobuf_FOUND)
   message(STATUS "Protobuf not found, fetching compatible version...")
   set(protobuf_BUILD_TESTS OFF)
@@ -122,7 +122,7 @@ if(NOT Protobuf_FOUND)
   FetchContent_Declare(
     protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-    GIT_TAG        v34.1
+    GIT_TAG        v35.1
     GIT_SHALLOW    TRUE
     OVERRIDE_FIND_PACKAGE
   )
@@ -174,16 +174,20 @@ endif()
 # Google test/mock
 
 if (WITH_TESTS)
-  FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_SHALLOW TRUE
-    GIT_TAG v1.17.0
-  )
-  # For Windows: Prevent overriding the parent project's compiler/linker settings
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  set(BUILD_SHARED_LIBS ON)
-  FetchContent_MakeAvailable(googletest)
+  find_package(GTest 1.17 CONFIG QUIET)
+  if(NOT GTest_FOUND)
+    message(STATUS "GTest not found, fetching compatible version...")
+    FetchContent_Declare(
+      googletest
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_SHALLOW TRUE
+      GIT_TAG v1.17.0
+    )
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS ON)
+    FetchContent_MakeAvailable(googletest)
+  endif()
 endif()
 
 #----------------------------------------------------------------------------------------------------
