@@ -49,7 +49,7 @@ jobs:
           ctest -V
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         configuration: [Debug, Release]
@@ -64,10 +64,15 @@ jobs:
           sudo apt-get install -y \
             cmake \
             ninja-build \
+            libabsl-dev \
             libboost-all-dev \
-            libssl-dev \
+            libgmock-dev \
+            libgtest-dev \
+            libprotobuf-dev \
             libspdlog-dev \
-            pkg-config
+            libssl-dev \
+            pkg-config \
+            protobuf-compiler
 
       - name: Build and test
         run: |
@@ -91,10 +96,13 @@ jobs:
         run: |
           brew update
           brew install \
-            cmake \
-            ninja \
+            abseil \
             boost \
+            cmake \
+            googletest \
+            ninja \
             openssl \
+            protobuf \
             spdlog
 
       - name: Build and test

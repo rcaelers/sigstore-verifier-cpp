@@ -86,7 +86,15 @@ if(WIN32)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 endif()
 
-find_package(absl 20260526 CONFIG QUIET)
+# Abseil's config-version file uses ExactVersion compatibility, so each
+# compatible LTS release must be probed explicitly (MSYS2 ships 20260526,
+# Homebrew and Ubuntu 26.04 ship 20260107).
+foreach(absl_lts_version 20260526 20260107)
+  find_package(absl ${absl_lts_version} CONFIG QUIET)
+  if(absl_FOUND)
+    break()
+  endif()
+endforeach()
 if(NOT absl_FOUND)
   message(STATUS "Abseil not found, fetching compatible version...")
 
@@ -108,6 +116,12 @@ if(NOT absl_FOUND)
 endif()
 
 find_package(Protobuf 35.1.0 QUIET CONFIG)
+if(NOT Protobuf_FOUND)
+  # Debian/Ubuntu ship protobuf 3.21 without CMake config files; fall back to
+  # CMake's FindProtobuf module, which also provides protobuf_generate and
+  # protobuf::libprotobuf. 3.21 is the oldest version the code supports.
+  find_package(Protobuf 3.21 QUIET)
+endif()
 if(NOT Protobuf_FOUND)
   message(STATUS "Protobuf not found, fetching compatible version...")
   set(protobuf_BUILD_TESTS OFF)
