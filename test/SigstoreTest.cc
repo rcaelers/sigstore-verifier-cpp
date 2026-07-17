@@ -389,14 +389,14 @@ TEST_F(SigstoreTest, ValidateLog_InvalidInclusionProofCanonicalizedBody)
       auto *it = obj.find("canonicalizedBody");
       if (it != obj.end())
         {
-          it->value() = "invalid-base64";
+          it->value() = "xinvalidbase64";
         }
       else
         {
           auto *body_it = obj.find("body");
           if (body_it != obj.end())
             {
-              body_it->value() = "invalid-base64";
+              body_it->value() = "xinvalidbase64";
             }
         }
     });
