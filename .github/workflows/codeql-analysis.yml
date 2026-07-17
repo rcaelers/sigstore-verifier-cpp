@@ -35,12 +35,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: cpp
 
@@ -64,7 +64,7 @@ jobs:
             tar
             xz
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.9"
 
@@ -77,10 +77,10 @@ jobs:
           ninja -C _build -v
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       actions: read
       contents: read
@@ -90,7 +90,7 @@ jobs:
         configuration: [Debug, Release]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -100,13 +100,18 @@ jobs:
           sudo apt-get install -y \
             cmake \
             ninja-build \
+            libabsl-dev \
             libboost-all-dev \
-            libssl-dev \
+            libgmock-dev \
+            libgtest-dev \
+            libprotobuf-dev \
             libspdlog-dev \
-            pkg-config
+            libssl-dev \
+            pkg-config \
+            protobuf-compiler
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: cpp
 
@@ -119,4 +124,4 @@ jobs:
           ctest -V
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
