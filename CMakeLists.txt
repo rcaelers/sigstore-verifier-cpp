@@ -115,7 +115,10 @@ if(NOT absl_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_BACKUP}")
 endif()
 
-find_package(Protobuf 35.1.0 QUIET CONFIG)
+# Protobuf's config-version file can report a release version (e.g. 36.2.0)
+# while checking compatibility against the C++ major version (e.g. 7).
+# Discover the installed config without a version to avoid rejecting it.
+find_package(Protobuf QUIET CONFIG)
 if(NOT Protobuf_FOUND)
   message(STATUS "Protobuf not found, fetching compatible version...")
   set(protobuf_BUILD_TESTS OFF)
