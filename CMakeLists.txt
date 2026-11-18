@@ -133,7 +133,7 @@ if(NOT Protobuf_FOUND)
   FetchContent_Declare(
     protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-    GIT_TAG        v35.1
+    GIT_TAG        v36.2
     GIT_SHALLOW    TRUE
     OVERRIDE_FIND_PACKAGE
   )
