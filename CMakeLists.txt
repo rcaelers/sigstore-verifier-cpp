@@ -89,7 +89,7 @@ endif()
 # Abseil's config-version file uses ExactVersion compatibility, so each
 # compatible LTS release must be probed explicitly (MSYS2 ships 20260526,
 # Homebrew and Ubuntu 26.04 ship 20260107).
-foreach(absl_lts_version 20260526 20260107)
+foreach(absl_lts_version 20260526 20260107 20260817)
   find_package(absl ${absl_lts_version} CONFIG QUIET)
   if(absl_FOUND)
     break()
