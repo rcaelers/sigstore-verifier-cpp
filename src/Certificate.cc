@@ -22,6 +22,7 @@
 
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <ctime>
 #include <fmt/chrono.h>
 #include <openssl/asn1.h>
@@ -38,6 +39,15 @@ namespace sigstore
 {
   namespace
   {
+    std::size_t asn1_string_length(const ASN1_STRING *str)
+    {
+#if OPENSSL_VERSION_NUMBER >= 0x40100000L
+      return ASN1_STRING_get_length(str);
+#else
+      return static_cast<std::size_t>(ASN1_STRING_length(str));
+#endif
+    }
+
     // Portable UTC time conversion function
     std::time_t mktime_utc(struct tm *tm)
     {
@@ -122,8 +132,8 @@ namespace sigstore
         return false;
       }
 
-    X509_NAME *issuer = X509_get_issuer_name(cert);
-    X509_NAME *subject = X509_get_subject_name(cert);
+    const X509_NAME *issuer = X509_get_issuer_name(cert);
+    const X509_NAME *subject = X509_get_subject_name(cert);
 
     if (issuer == nullptr || subject == nullptr)
       {
@@ -177,7 +187,7 @@ namespace sigstore
                 const unsigned char *data = ASN1_STRING_get0_data(email_str);
                 if (data != nullptr)
                   {
-                    int len = ASN1_STRING_length(email_str);
+                    std::size_t len = asn1_string_length(email_str);
                     // NOLINTNEXTLINE: OpenSSL API requires binary data conversion
                     email = std::string(reinterpret_cast<const char *>(data), len);
                     break;
@@ -216,14 +226,14 @@ namespace sigstore
         return "";
       }
 
-    X509_EXTENSION *ext = X509_get_ext(cert, ext_idx);
+    auto *ext = X509_get_ext(cert, ext_idx);
     if (ext == nullptr)
       {
         logger_->error("Failed to get OIDC issuer extension from certificate");
         return "";
       }
 
-    ASN1_OCTET_STRING *ext_data = X509_EXTENSION_get_data(ext);
+    const ASN1_OCTET_STRING *ext_data = X509_EXTENSION_get_data(ext);
     if (ext_data == nullptr)
       {
         logger_->error("Failed to get OIDC issuer extension data");
@@ -231,7 +241,7 @@ namespace sigstore
       }
 
     const unsigned char *data = ASN1_STRING_get0_data(ext_data);
-    int len = ASN1_STRING_length(ext_data);
+    std::size_t len = asn1_string_length(ext_data);
 
     // NOLINTNEXTLINE: OpenSSL API requires binary data conversion
     std::string issuer = std::string(reinterpret_cast<const char *>(data), len);
