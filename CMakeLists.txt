@@ -117,12 +117,6 @@ endif()
 
 find_package(Protobuf 35.1.0 QUIET CONFIG)
 if(NOT Protobuf_FOUND)
-  # Debian/Ubuntu ship protobuf 3.21 without CMake config files; fall back to
-  # CMake's FindProtobuf module, which also provides protobuf_generate and
-  # protobuf::libprotobuf. 3.21 is the oldest version the code supports.
-  find_package(Protobuf 3.21 QUIET)
-endif()
-if(NOT Protobuf_FOUND)
   message(STATUS "Protobuf not found, fetching compatible version...")
   set(protobuf_BUILD_TESTS OFF)
   set(protobuf_BUILD_SHARED_LIBS ON)
