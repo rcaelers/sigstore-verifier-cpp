@@ -1,5 +1,11 @@
 
 if (WITH_TESTS)
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME sigstore-protobuf-configure
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_protobuf.py")
+  endif()
+
   add_executable(test-sigstore
     BundleLoaderTest.cc
     BundleTest.cc

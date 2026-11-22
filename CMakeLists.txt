@@ -115,35 +115,7 @@ if(NOT absl_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_BACKUP}")
 endif()
 
-# Protobuf's config-version file can report a release version (e.g. 36.2.0)
-# while checking compatibility against the C++ major version (e.g. 7).
-# Discover the installed config without a version to avoid rejecting it.
-find_package(Protobuf QUIET CONFIG)
-if(NOT Protobuf_FOUND)
-  message(STATUS "Protobuf not found, fetching compatible version...")
-  set(protobuf_BUILD_TESTS OFF)
-  set(protobuf_BUILD_SHARED_LIBS ON)
-  set(protobuf_BUILD_EXPORT OFF)
-  set(protobuf_MSVC_STATIC_RUNTIME OFF)
-  set(protobuf_BUILD_PROTOC_BINARIES ON)
-
-  set(CMAKE_CXX_FLAGS_BACKUP "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
-
-  FetchContent_Declare(
-    protobuf
-    GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-    GIT_TAG        v36.2
-    GIT_SHALLOW    TRUE
-    OVERRIDE_FIND_PACKAGE
-  )
-  FetchContent_MakeAvailable(protobuf)
-
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_BACKUP}")
-
-  include(${protobuf_SOURCE_DIR}/cmake/protobuf-generate.cmake)
-  list(APPEND Protobuf_INCLUDE_DIRS "${protobuf_SOURCE_DIR}/src/")
-endif()
+include(SigstoreProtobuf)
 
 #----------------------------------------------------------------------------------------------------
 # Boost
