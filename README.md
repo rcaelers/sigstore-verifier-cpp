@@ -45,6 +45,21 @@ cd build
 ctest --output-on-failure
 ```
 
+### Cross-compiling
+
+The Protobuf library is built or discovered for the target platform. Its code
+generator must run on the build host. Install a matching native `protoc` on the
+host's `PATH`, or select it with the standard CMake override:
+
+```bash
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=/path/to/toolchain.cmake \
+  -DProtobuf_PROTOC_EXECUTABLE=/path/to/host/bin/protoc
+```
+
+Sigstore checks that the executable runs and matches the target Protobuf
+release. The source fallback currently uses Protobuf 36.2. Cross builds use
+this host tool directly and do not build a target-platform `protoc`.
+
 ## Usage
 
 ### Basic Verification

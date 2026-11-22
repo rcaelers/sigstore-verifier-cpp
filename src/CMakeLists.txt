@@ -43,6 +43,7 @@ set(SIGSTORE_PROTO_FILES
 )
 
 protobuf_generate(
+    ${SIGSTORE_PROTOC_ARGS}
     LANGUAGE cpp
     OUT_VAR   SIGSTORE_PROTO_SRCS
     IMPORT_DIRS ${Protobuf_IMPORT_DIRS} ${Protobuf_INCLUDE_DIRS}
@@ -54,6 +55,7 @@ set(GOOGLEAPIS_PROTO_FILES
 )
 
 protobuf_generate(
+    ${SIGSTORE_PROTOC_ARGS}
     LANGUAGE cpp
     OUT_VAR   GOOGLEAPI_PROTO_SRCS
     IMPORT_DIRS ${Protobuf_IMPORT_DIRS} ${Protobuf_INCLUDE_DIRS}
